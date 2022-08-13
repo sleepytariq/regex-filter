@@ -1,0 +1,4 @@
+.venv/
+filter.json
+pyrightconfig.json
+test_files/
