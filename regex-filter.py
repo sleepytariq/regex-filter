@@ -3,6 +3,7 @@ import re
 from colorama import Fore, init
 from json import load, JSONDecodeError
 from argparse import ArgumentParser
+from sys import exit
 
 # colorama setup
 init()
@@ -21,7 +22,7 @@ def load_json(json_file):
 		with open(json_file, "r") as jf:
 			arr = load(jf)
 	except JSONDecodeError:
-		print(f"{red}[✘]{reset} FAILED TO LOAD JSON FILE")
+		print(f"{red}[X]{reset} FAILED TO LOAD JSON FILE")
 		exit(1)
 	return arr
 
@@ -50,7 +51,7 @@ def main():
 			with open(text_file, "r") as f:
 				text = f.read()
 		except UnicodeDecodeError:
-			print(f"{red}[✘]{reset} FAILED TO READ {filename}")
+			print(f"{red}[X]{reset} FAILED TO READ {filename}")
 			continue
 
 		# loop through the filter_list and remove the regex matches with the substitute word
@@ -65,7 +66,7 @@ def main():
 
 		# print the result to the user
 		if count > 0:
-			print(f"{green}[✔]{reset} CHANGED {cyan}{count}{reset} MATCHES FROM {filename}")
+			print(f"{green}[+]{reset} CHANGED {cyan}{count}{reset} MATCHES FROM {filename}")
 		else:
 			print(f"{yellow}[!]{reset} NO CHANGES FROM {filename}")
 
