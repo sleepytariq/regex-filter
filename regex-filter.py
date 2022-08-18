@@ -49,17 +49,17 @@ def main():
         
         # load the file using charset_normalizer's from_path()
         try:
-            cnf = from_path(text_file).best()
-            text = str(cnf)
-            enc_type = cnf.encoding
-        except IOError:
+            enc_type = from_path(text_file).best().encoding
+            with open(text_file, "r", encoding=enc_type) as f:
+                text = f.read()
+        except Exception:
             print(f"{red}[X]{reset} FAILED TO READ {filename}")
             continue
 
         # loop through the filter_list and remove the regex matches with the substitute word
         # increment the count variable by the number of matches for each regex
         for regex, substitute in filter_list.items():
-            count += len(re.findall(regex, text))
+            count += len(re.findall(regex, text, flags=re.IGNORECASE))
             text = re.sub(regex, substitute, text, flags=re.IGNORECASE)
 
 		# write the new text to a new file under the new_dir directory
