@@ -1,5 +1,5 @@
 import os
-import re
+from re import findall, sub, IGNORECASE
 from colorama import Fore, init
 from json import load, JSONDecodeError
 from argparse import ArgumentParser
@@ -15,17 +15,23 @@ red = Fore.RED
 reset = Fore.RESET
 
 def load_json(json_file):
-	"""
-	This function will try to load the passed json file and return a dictionary
-	A JSONDecodeError exception will be caught upon failure
-	"""
 	try:
 		with open(json_file, "r") as jf:
 			arr = load(jf)
 	except JSONDecodeError:
 		print(f"{red}[X]{reset} FAILED TO LOAD JSON FILE")
 		exit(1)
+	except FileNotFoundError:
+		print(f"{red}[X]{reset} JSON FILE NOT FOUND")
+		exit(1)
 	return arr
+
+def read_file(file_path):
+    # load the file using charset_normalizer's from_path()
+    bin_file = from_path(file_path).best()
+    text = str(bin_file)
+    enc_type = bin_file.encoding
+    return (text, enc_type)
 
 def parse_arguments():
     parser = ArgumentParser(description="Replace matched strings with specified substitute")
@@ -34,11 +40,29 @@ def parse_arguments():
     return parser.parse_args()
 
 def main():
+
+    # parsed arguments from user
     args = parse_arguments()
+
+    # check if directory exists
+    if not os.path.exists(args.directory):
+        print(f"{red}[X]{reset} DIRECTORY NOT FOUND")
+        exit(1)
+
+    # init variables from input
     new_dir = f"{args.directory}/cleaned_files"
     filter_list = load_json(args.filter)
     text_files = [f"{args.directory}/{item}" for item in os.listdir(args.directory) if os.path.isfile(f"{args.directory}/{item}")]
-    os.makedirs(f"{new_dir}", exist_ok=True)
+
+    # check if directory contains files
+    if not text_files:
+        print(f"{red}[X]{reset} NO FILES IN DIRECTORY")
+        exit(1)
+
+    # create the new directory to save the new cleaned files
+    os.makedirs(new_dir, exist_ok=True)
+
+    # loop and clean text files
     for text_file in text_files:
 
         # keep count of regex matches
@@ -47,11 +71,9 @@ def main():
         # prepare filename
         filename = f"{cyan}{os.path.basename(text_file)}{reset}"
         
-        # load the file using charset_normalizer's from_path()
+        # read text_file and get expand the text and enc_type tuple
         try:
-            enc_type = from_path(text_file).best().encoding
-            with open(text_file, "r", encoding=enc_type) as f:
-                text = f.read()
+            text, enc_type = read_file(text_file)
         except Exception:
             print(f"{red}[X]{reset} FAILED TO READ {filename}")
             continue
@@ -59,8 +81,8 @@ def main():
         # loop through the filter_list and remove the regex matches with the substitute word
         # increment the count variable by the number of matches for each regex
         for regex, substitute in filter_list.items():
-            count += len(re.findall(regex, text, flags=re.IGNORECASE))
-            text = re.sub(regex, substitute, text, flags=re.IGNORECASE)
+            count += len(findall(regex, text, flags=IGNORECASE))
+            text = sub(regex, substitute, text, flags=IGNORECASE)
 
 		# write the new text to a new file under the new_dir directory
         with open(f"{new_dir}/{os.path.basename(text_file)}", "w", encoding=enc_type) as f:
