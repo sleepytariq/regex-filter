@@ -1,4 +1,4 @@
-## Usage
+# Usage
 ```console
 usage: regex-filter.py [-h] directory filter
 
@@ -14,7 +14,7 @@ options:
 
 The json file should be in `REGEX:WORD` format where the keys are the regex and the values are the word to replace matches with
 
-# Example
+## Example
 ```json
 {
 	"(\\d{1,3}\\.){3}\\d{1,3}" : "x.x.x.x"
