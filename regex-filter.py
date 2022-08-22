@@ -4,7 +4,7 @@ from colorama import Fore, init
 from json import load, JSONDecodeError
 from argparse import ArgumentParser
 from sys import exit
-from charset_normalizer import from_path
+from charset_normalizer import from_bytes
 
 # colorama setup
 init()
@@ -27,11 +27,12 @@ def load_json(json_file):
 		exit(1)
 	return arr
 
-# load the file using charset_normalizer's from_path()
+# load the file and detect the encoding using charset_normalizer's from_bytes()
 def read_file(file_path):
-    bin_file = from_path(file_path).best()
-    text = str(bin_file)
-    enc_type = bin_file.encoding
+    with open(file_path, "rb") as f:
+        bytes_data = f.read()
+    enc_type = from_bytes(bytes_data).best().encoding
+    text = bytes_data.decode(enc_type)
     return (text, enc_type)
 
 def clean_files(text_files, filter_list, new_dir):
@@ -81,8 +82,11 @@ def rename_files(filter_list, new_dir):
         
         # print the result to the user
         if changed:
-            os.rename(f"{new_dir}/{text_file}", f"{new_dir}/{new_name}")
-            print(f"{green}[+]{reset} RENAMED {cyan}{text_file}{reset} TO {cyan}{new_name}{reset}")
+            try:
+                os.rename(f"{new_dir}/{text_file}", f"{new_dir}/{new_name}")
+                print(f"{green}[+]{reset} RENAMED {cyan}{text_file}{reset} TO {cyan}{new_name}{reset}")
+            except FileExistsError:
+                print(f"{red}[X]{reset} CANNOT RENAME {cyan}{text_file}{reset} NEW NAME {cyan}{new_name}{reset} ALREADY EXISTS")
         else:
             print(f"{yellow}[!]{reset} DID NOT RENAME {cyan}{text_file}{reset}")
 
