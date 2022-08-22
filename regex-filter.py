@@ -4,7 +4,7 @@ from colorama import Fore, init
 from json import load, JSONDecodeError
 from argparse import ArgumentParser
 from sys import exit
-from charset_normalizer import from_bytes
+from charset_normalizer import from_path
 
 # colorama setup
 init()
@@ -27,12 +27,11 @@ def load_json(json_file):
 		exit(1)
 	return arr
 
-# load the file and detect the encoding using charset_normalizer's from_bytes()
+# load the file using the encoding detected by charset_normalizer's from_path()
 def read_file(file_path):
-    with open(file_path, "rb") as f:
-        bytes_data = f.read()
-    enc_type = from_bytes(bytes_data).best().encoding
-    text = bytes_data.decode(enc_type)
+    enc_type = from_path(file_path).best().encoding
+    with open(file_path, "r", encoding=enc_type) as f:
+        text = f.read()
     return (text, enc_type)
 
 def clean_files(text_files, filter_list, new_dir):
