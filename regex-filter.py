@@ -12,6 +12,7 @@ cyan = Fore.CYAN
 yellow = Fore.YELLOW
 green = Fore.GREEN
 red = Fore.RED
+magenta = Fore.MAGENTA
 reset = Fore.RESET
 
 def load_json(json_file):
@@ -26,42 +27,14 @@ def load_json(json_file):
 		exit(1)
 	return arr
 
+# load the file using charset_normalizer's from_path()
 def read_file(file_path):
-    # load the file using charset_normalizer's from_path()
     bin_file = from_path(file_path).best()
     text = str(bin_file)
     enc_type = bin_file.encoding
     return (text, enc_type)
 
-def parse_arguments():
-    parser = ArgumentParser(description="Replace matched strings with specified substitute")
-    parser.add_argument("directory", type=str, help="Path to a directory containing files to filter")
-    parser.add_argument("filter", type=str, help="Path to a json file containing REGEX:WORD")
-    return parser.parse_args()
-
-def main():
-
-    # parsed arguments from user
-    args = parse_arguments()
-
-    # check if directory exists
-    if not os.path.exists(args.directory):
-        print(f"{red}[X]{reset} DIRECTORY NOT FOUND")
-        exit(1)
-
-    # init variables from input
-    new_dir = f"{args.directory}/cleaned_files"
-    filter_list = load_json(args.filter)
-    text_files = [f"{args.directory}/{item}" for item in os.listdir(args.directory) if os.path.isfile(f"{args.directory}/{item}")]
-
-    # check if directory contains files
-    if not text_files:
-        print(f"{red}[X]{reset} NO FILES IN DIRECTORY")
-        exit(1)
-
-    # create the new directory to save the new cleaned files
-    os.makedirs(new_dir, exist_ok=True)
-
+def clean_files(text_files, filter_list, new_dir):
     # loop and clean text files
     for text_file in text_files:
 
@@ -78,7 +51,7 @@ def main():
             print(f"{red}[X]{reset} FAILED TO READ {filename}")
             continue
 
-        # loop through the filter_list and remove the regex matches with the substitute word
+        # loop through the filter_list and replace the regex matches with the substitute word
         # increment the count variable by the number of matches for each regex
         for regex, substitute in filter_list.items():
             count += len(findall(regex, text, flags=IGNORECASE))
@@ -93,6 +66,68 @@ def main():
             print(f"{green}[+]{reset} CHANGED {cyan}{count}{reset} MATCHES FROM {filename}")
         else:
             print(f"{yellow}[!]{reset} NO CHANGES FROM {filename}")
+
+def rename_files(filter_list, new_dir):
+    # loop through each file in the new_dir
+    for text_file in os.listdir(new_dir):
+        changed = False
+        new_name = text_file
+
+        # loop through the filter_list and replace the regex matches with the substitute word
+        for regex, substitute in filter_list.items():
+            if len(findall(regex, new_name, flags=IGNORECASE)) > 0:
+                new_name = sub(regex, substitute, new_name)
+                changed = True
+        
+        # print the result to the user
+        if changed:
+            os.rename(f"{new_dir}/{text_file}", f"{new_dir}/{new_name}")
+            print(f"{green}[+]{reset} RENAMED {cyan}{text_file}{reset} TO {cyan}{new_name}{reset}")
+        else:
+            print(f"{yellow}[!]{reset} DID NOT RENAME {cyan}{text_file}{reset}")
+
+def parse_arguments():
+    parser = ArgumentParser(description="Replace matched strings with specified substitute")
+    parser.add_argument("directory", type=str, help="path to a directory containing files to clean")
+    parser.add_argument("filter", type=str, help="path to a json file containing REGEX:WORD")
+    parser.add_argument("-r", "--rename", action="store_true", help="use the json file to rename files")
+    return parser.parse_args()
+
+def main():
+
+    # parsed arguments from user
+    args = parse_arguments() 
+
+    # check if directory exists
+    if not os.path.exists(args.directory):
+        print(f"{red}[X]{reset} DIRECTORY NOT FOUND")
+        exit(1)
+
+    # check if it is a directory
+    if not os.path.isdir(args.directory):
+        print(f"{red}[X]{reset} {cyan}{args.directory}{reset} IS NOT A DIRECTORY")
+        exit(1)
+
+    # init variables from input
+    new_dir = f"{args.directory}/cleaned_files"
+    filter_list = load_json(args.filter)
+    text_files = [f"{args.directory}/{item}" for item in os.listdir(args.directory) if os.path.isfile(f"{args.directory}/{item}")]
+
+    # check if directory contains files
+    if not text_files:
+        print(f"{red}[X]{reset} NO FILES IN DIRECTORY")
+        exit(1)
+
+    # create the new directory to save the new cleaned files
+    os.makedirs(new_dir, exist_ok=True)
+
+    # main functionality of the program
+    clean_files(text_files, filter_list, new_dir)
+
+    # if -r or --rename arguments is passed, rename the files in new_dir
+    if args.rename:
+        print(f"{magenta}=============================={reset}")
+        rename_files(filter_list, new_dir)
 
 if __name__ == "__main__":
 	main()
