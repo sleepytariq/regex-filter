@@ -1,8 +1,9 @@
 import os
+from shutil import copy, rmtree
 from re import findall, sub, IGNORECASE
 from colorama import Fore, init
 from json import load, JSONDecodeError
-from argparse import ArgumentParser
+from argparse import ArgumentParser, SUPPRESS
 from sys import exit
 from charset_normalizer import from_path
 
@@ -90,16 +91,25 @@ def rename_files(filter_list, new_dir):
             print(f"{yellow}[!]{reset} DID NOT RENAME {cyan}{text_file}{reset}")
 
 def parse_arguments():
-    parser = ArgumentParser(description="Replace matched strings with specified substitute")
-    parser.add_argument("directory", type=str, help="path to a directory containing files to clean")
-    parser.add_argument("filter", type=str, help="path to a json file containing REGEX:WORD")
-    parser.add_argument("-r", "--rename", action="store_true", help="use the json file to rename files")
+    parser = ArgumentParser(description="Replace matched strings with specified substitute", add_help=False)
+    required = parser.add_argument_group('required')
+    modifiers = parser.add_argument_group('modifiers')
+    optional = parser.add_argument_group('optional')
+    required.add_argument("-d", "--directory", type=str, help="path to a directory containing files to clean", required=True)
+    required.add_argument("-f", "--filter", type=str, help="path to a json file containing REGEX:WORD", required=True)
+    modifiers.add_argument("-m", "--modify", action="store_true", help="use the filter to modify content of files")
+    modifiers.add_argument("-r", "--rename", action="store_true", help="use the filter to rename files")
+    optional.add_argument("-h", "--help", action="help", default=SUPPRESS, help="show this help message and exit")
     return parser.parse_args()
 
 def main():
 
     # parsed arguments from user
     args = parse_arguments() 
+
+    if (args.modify or args.rename) == False:
+        print(f"{red}[X]{reset} YOU NEED TO USE THE --modify AND --rename MODIFIERS")
+        exit(1)
 
     # check if directory exists
     if not os.path.exists(args.directory):
@@ -122,15 +132,28 @@ def main():
         exit(1)
 
     # create the new directory to save the new cleaned files
-    os.makedirs(new_dir, exist_ok=True)
+    if os.path.exists(new_dir):
+        rmtree(new_dir)
+    os.makedirs(new_dir)
 
     # main functionality of the program
-    clean_files(text_files, filter_list, new_dir)
-
-    # if -r or --rename arguments is passed, rename the files in new_dir
-    if args.rename:
+    if args.modify and args.rename:
+        clean_files(text_files, filter_list, new_dir)
         print(f"{magenta}=============================={reset}")
         rename_files(filter_list, new_dir)
+        exit(0)
+
+    # if only -m, --modify argument is passed
+    if argparse.modify:
+        clean_files(text_files, filter_list, new_dir)
+        exit(0)
+
+    # if only -r, --rename argument is passed
+    if args.rename:
+        for text_files in text_files:
+            copy(text_files, new_dir)
+        rename_files(filter_list, new_dir)
+        exit(0)
 
 if __name__ == "__main__":
 	main()
