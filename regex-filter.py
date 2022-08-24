@@ -7,8 +7,9 @@ from argparse import ArgumentParser, SUPPRESS
 from sys import exit
 from charset_normalizer import from_path
 from random import choice
+from signal import signal, SIGINT
 
-# colorama setup
+# setup colorama 
 init()
 cyan = Fore.CYAN
 yellow = Fore.YELLOW
@@ -16,6 +17,9 @@ green = Fore.GREEN
 red = Fore.RED
 magenta = Fore.MAGENTA
 reset = Fore.RESET
+
+def signal_handler(signal, frame):
+    exit(1)
 
 def load_json(json_file):
 	try:
@@ -30,10 +34,9 @@ def load_json(json_file):
 	return arr
 
 def generate_random_string():
-    chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
     s = ""
     for _ in range(5):
-        s += choice(chars)
+        s += choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
     return s + "_"
 
 # load the file using the encoding detected by charset_normalizer's from_path()
@@ -109,6 +112,9 @@ def parse_arguments():
 
 def main():
 
+    # setup signal handler to handle ctrl + c
+    signal(SIGINT, signal_handler)
+
     # parsed arguments from user
     args = parse_arguments() 
 
@@ -141,19 +147,19 @@ def main():
         rmtree(new_dir)
     os.makedirs(new_dir)
 
-    # main functionality of the program
+    # if both -m and -r arguments are passed
     if args.modify and args.rename:
         clean_files(text_files, filter_list, new_dir)
         print(f"{magenta}=============================={reset}")
         rename_files(filter_list, new_dir)
         exit(0)
 
-    # if only -m, --modify argument is passed
+    # if only -m argument is passed
     if args.modify:
         clean_files(text_files, filter_list, new_dir)
         exit(0)
 
-    # if only -r, --rename argument is passed
+    # if only -r argument is passed
     if args.rename:
         for text_files in text_files:
             copy(text_files, new_dir)
