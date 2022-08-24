@@ -2,13 +2,13 @@
 ```console
 usage: regex-filter.py -d DIRECTORY -f FILTER [-m] [-r] [-h]
 
-Replace matched strings with specified substitute
+Replace matched strings in file names or file content with specified substitute using regular expressions
 
 required:
   -d DIRECTORY, --directory DIRECTORY
-                        path to a directory containing files to clean
+                        path to a directory containing files
   -f FILTER, --filter FILTER
-                        path to a json file containing REGEX:WORD
+                        path to a json file in REGEX:WORD format
 
 modifiers:
   -m, --modify          use the filter to modify content of files

@@ -3,7 +3,7 @@ from shutil import copy, rmtree
 from re import findall, sub, IGNORECASE
 from colorama import Fore, init
 from json import load, JSONDecodeError
-from argparse import ArgumentParser, SUPPRESS
+from argparse import ArgumentParser
 from sys import exit
 from charset_normalizer import from_path
 from random import choice
@@ -66,6 +66,7 @@ def clean_files(text_files, filter_list, new_dir):
             text, enc_type = read_file(text_file)
         except Exception:
             print(f"{red}[X]{reset} FAILED TO READ {filename}")
+            copy(text_file, new_dir)
             continue
 
         # loop through the filter_list and replace the regex matches with the substitute word
@@ -108,7 +109,7 @@ def rename_files(filter_list, new_dir):
 def parse_arguments():
 
     # create the ArgumentParser object without the help argument
-    parser = ArgumentParser(description="Replace matched strings with specified substitute", add_help=False)
+    parser = ArgumentParser(description="Replace matched strings in file names or file content with specified substitute using regular expressions", add_help=False)
 
     # create the arguments groups
     required = parser.add_argument_group("required")
@@ -116,11 +117,11 @@ def parse_arguments():
     optional = parser.add_argument_group("optional")
 
     # add the following arguments and readd the help argument
-    required.add_argument("-d", "--directory", type=str, help="path to a directory containing files to clean", required=True)
-    required.add_argument("-f", "--filter", type=str, help="path to a json file containing REGEX:WORD", required=True)
+    required.add_argument("-d", "--directory", type=str, help="path to a directory containing files", required=True)
+    required.add_argument("-f", "--filter", type=str, help="path to a json file in REGEX:WORD format", required=True)
     modifiers.add_argument("-m", "--modify", action="store_true", help="use the filter to modify content of files")
     modifiers.add_argument("-r", "--rename", action="store_true", help="use the filter to rename files")
-    optional.add_argument("-h", "--help", action="help", default=SUPPRESS, help="show this help message and exit")
+    optional.add_argument("-h", "--help", action="help", help="show this help message and exit")
 
     return parser.parse_args()
 
@@ -165,7 +166,7 @@ def main():
     # if both -m and -r arguments are passed
     if args.modify and args.rename:
         clean_files(text_files, filter_list, new_dir)
-        print(f"{magenta}=============================={reset}")
+        print(f"{magenta}{'-' * os.get_terminal_size().columns}{reset}")
         rename_files(filter_list, new_dir)
         exit(0)
 
