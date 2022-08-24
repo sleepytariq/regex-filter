@@ -9,7 +9,7 @@ from charset_normalizer import from_path
 from random import choice
 from signal import signal, SIGINT
 
-# setup colorama 
+# setup colorama
 init()
 cyan = Fore.CYAN
 yellow = Fore.YELLOW
@@ -18,20 +18,23 @@ red = Fore.RED
 magenta = Fore.MAGENTA
 reset = Fore.RESET
 
+
 def signal_handler(signal, frame):
     exit(1)
 
+
 def load_json(json_file):
-	try:
-		with open(json_file, "r") as jf:
-			arr = load(jf)
-	except JSONDecodeError:
-		print(f"{red}[X]{reset} FAILED TO LOAD JSON FILE")
-		exit(1)
-	except FileNotFoundError:
-		print(f"{red}[X]{reset} JSON FILE NOT FOUND")
-		exit(1)
-	return arr
+    try:
+        with open(json_file, "r") as jf:
+            arr = load(jf)
+    except JSONDecodeError:
+        print(f"{red}[X]{reset} FAILED TO LOAD JSON FILE")
+        exit(1)
+    except FileNotFoundError:
+        print(f"{red}[X]{reset} JSON FILE NOT FOUND")
+        exit(1)
+    return arr
+
 
 def generate_random_string():
     s = ""
@@ -39,12 +42,14 @@ def generate_random_string():
         s += choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
     return s + "_"
 
+
 # load the file using the encoding detected by charset_normalizer's from_path()
 def read_file(file_path):
     enc_type = from_path(file_path).best().encoding
     with open(file_path, "r", encoding=enc_type) as f:
         text = f.read()
     return (text, enc_type)
+
 
 def clean_files(text_files, filter_list, new_dir):
     # loop and clean text files
@@ -55,7 +60,7 @@ def clean_files(text_files, filter_list, new_dir):
 
         # prepare filename
         filename = f"{cyan}{os.path.basename(text_file)}{reset}"
-        
+
         # read text_file and get expand the text and enc_type tuple
         try:
             text, enc_type = read_file(text_file)
@@ -69,7 +74,7 @@ def clean_files(text_files, filter_list, new_dir):
             count += len(findall(regex, text, flags=IGNORECASE))
             text = sub(regex, substitute, text, flags=IGNORECASE)
 
-		# write the new text to a new file under the new_dir directory
+        # write the new text to a new file under the new_dir directory
         with open(f"{new_dir}/{os.path.basename(text_file)}", "w", encoding=enc_type) as f:
             f.write(text)
 
@@ -78,6 +83,7 @@ def clean_files(text_files, filter_list, new_dir):
             print(f"{green}[+]{reset} CHANGED {cyan}{count}{reset} MATCHES FROM {filename}")
         else:
             print(f"{yellow}[!]{reset} NO CHANGES FROM {filename}")
+
 
 def rename_files(filter_list, new_dir):
     # loop through each file in the new_dir
@@ -88,7 +94,7 @@ def rename_files(filter_list, new_dir):
         # loop through the filter_list and replace the regex matches with the substitute word
         for regex, substitute in filter_list.items():
             new_name = sub(regex, substitute, new_name)
-        
+
         # print the result to the user
         if new_name != text_file:
             if os.path.exists(f"{new_dir}/{new_name}"):
@@ -98,17 +104,26 @@ def rename_files(filter_list, new_dir):
         else:
             print(f"{yellow}[!]{reset} DID NOT RENAME {cyan}{text_file}{reset}")
 
+
 def parse_arguments():
+
+    # create the ArgumentParser object without the help argument
     parser = ArgumentParser(description="Replace matched strings with specified substitute", add_help=False)
-    required = parser.add_argument_group('required')
-    modifiers = parser.add_argument_group('modifiers')
-    optional = parser.add_argument_group('optional')
+
+    # create the arguments groups
+    required = parser.add_argument_group("required")
+    modifiers = parser.add_argument_group("modifiers")
+    optional = parser.add_argument_group("optional")
+
+    # add the following arguments and readd the help argument
     required.add_argument("-d", "--directory", type=str, help="path to a directory containing files to clean", required=True)
     required.add_argument("-f", "--filter", type=str, help="path to a json file containing REGEX:WORD", required=True)
     modifiers.add_argument("-m", "--modify", action="store_true", help="use the filter to modify content of files")
     modifiers.add_argument("-r", "--rename", action="store_true", help="use the filter to rename files")
     optional.add_argument("-h", "--help", action="help", default=SUPPRESS, help="show this help message and exit")
+
     return parser.parse_args()
+
 
 def main():
 
@@ -116,7 +131,7 @@ def main():
     signal(SIGINT, signal_handler)
 
     # parsed arguments from user
-    args = parse_arguments() 
+    args = parse_arguments()
 
     if (args.modify or args.rename) == False:
         print(f"{red}[X]{reset} YOU NEED TO USE --modify AND/OR --rename MODIFIERS")
@@ -166,5 +181,6 @@ def main():
         rename_files(filter_list, new_dir)
         exit(0)
 
+
 if __name__ == "__main__":
-	main()
+    main()
