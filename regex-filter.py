@@ -6,6 +6,7 @@ from json import load, JSONDecodeError
 from argparse import ArgumentParser, SUPPRESS
 from sys import exit
 from charset_normalizer import from_path
+from random import choice
 
 # colorama setup
 init()
@@ -27,6 +28,13 @@ def load_json(json_file):
 		print(f"{red}[X]{reset} JSON FILE NOT FOUND")
 		exit(1)
 	return arr
+
+def generate_random_string():
+    chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+    s = ""
+    for _ in range(5):
+        s += choice(chars)
+    return s + "_"
 
 # load the file using the encoding detected by charset_normalizer's from_path()
 def read_file(file_path):
@@ -76,17 +84,14 @@ def rename_files(filter_list, new_dir):
 
         # loop through the filter_list and replace the regex matches with the substitute word
         for regex, substitute in filter_list.items():
-            if len(findall(regex, new_name, flags=IGNORECASE)) > 0:
-                new_name = sub(regex, substitute, new_name)
-                changed = True
+            new_name = sub(regex, substitute, new_name)
         
         # print the result to the user
-        if changed:
-            try:
-                os.rename(f"{new_dir}/{text_file}", f"{new_dir}/{new_name}")
-                print(f"{green}[+]{reset} RENAMED {cyan}{text_file}{reset} TO {cyan}{new_name}{reset}")
-            except FileExistsError:
-                print(f"{red}[X]{reset} CANNOT RENAME {cyan}{text_file}{reset} NEW NAME {cyan}{new_name}{reset} ALREADY EXISTS")
+        if new_name != text_file:
+            if os.path.exists(f"{new_dir}/{new_name}"):
+                new_name = generate_random_string() + new_name
+            os.rename(f"{new_dir}/{text_file}", f"{new_dir}/{new_name}")
+            print(f"{green}[+]{reset} RENAMED {cyan}{text_file}{reset} TO {cyan}{new_name}{reset}")
         else:
             print(f"{yellow}[!]{reset} DID NOT RENAME {cyan}{text_file}{reset}")
 
@@ -108,7 +113,7 @@ def main():
     args = parse_arguments() 
 
     if (args.modify or args.rename) == False:
-        print(f"{red}[X]{reset} YOU NEED TO USE THE --modify AND --rename MODIFIERS")
+        print(f"{red}[X]{reset} YOU NEED TO USE --modify AND/OR --rename MODIFIERS")
         exit(1)
 
     # check if directory exists
@@ -144,7 +149,7 @@ def main():
         exit(0)
 
     # if only -m, --modify argument is passed
-    if argparse.modify:
+    if args.modify:
         clean_files(text_files, filter_list, new_dir)
         exit(0)
 
