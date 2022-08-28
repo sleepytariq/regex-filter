@@ -14,7 +14,6 @@ cyan = Fore.CYAN
 yellow = Fore.YELLOW
 green = Fore.GREEN
 red = Fore.RED
-magenta = Fore.MAGENTA
 reset = Fore.RESET
 
 
@@ -35,43 +34,31 @@ def load_json(json_file):
     return arr
 
 
-def generate_random_string():
-    s = ""
-    for _ in range(5):
-        s += choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-    return s + "_"
-
-
-def read_file(file_path):
-    enc_type = from_path(file_path).best().encoding
-    with open(file_path, "r", encoding=enc_type) as f:
-        text = f.read()
-    return (text, enc_type)
-
-
-def clean_files(text_files, filter_list, new_dir):
-    for text_file in text_files:
+def clean_files(filter_list, new_dir):
+    for text_file in [f"{new_dir}/{item}" for item in os.listdir(new_dir)]:
         count = 0
-        filename = f"{cyan}{os.path.basename(text_file)}{reset}"
 
         try:
-            text, enc_type = read_file(text_file)
+            enc_type = from_path(text_file).best().encoding
+            f = open(text_file, "r+", encoding=enc_type)
+            text = f.read()
         except Exception:
-            print(f"{red}[X]{reset} FAILED TO READ {filename}")
-            copy(text_file, new_dir)
+            print(f"{red}[X]{reset} FAILED TO READ {cyan}{os.path.basename(text_file)}{reset}")
             continue
 
         for regex, substitute in filter_list.items():
             count += len(findall(regex, text, flags=IGNORECASE))
             text = sub(regex, substitute, text, flags=IGNORECASE)
 
-        with open(f"{new_dir}/{os.path.basename(text_file)}", "w", encoding=enc_type) as f:
-            f.write(text)
-
         if count > 0:
-            print(f"{green}[+]{reset} CHANGED {cyan}{count}{reset} MATCHES FROM {filename}")
+            f.seek(0)
+            f.write(text)
+            f.truncate()
+            print(f"{green}[+]{reset} CHANGED {cyan}{count}{reset} MATCHES FROM {cyan}{os.path.basename(text_file)}{reset}")
         else:
-            print(f"{yellow}[!]{reset} NO CHANGES FROM {filename}")
+            print(f"{yellow}[!]{reset} NO CHANGES FROM {cyan}{os.path.basename(text_file)}{reset}")
+
+        f.close()
 
 
 def rename_files(filter_list, new_dir):
@@ -84,7 +71,7 @@ def rename_files(filter_list, new_dir):
 
         if new_name != text_file:
             if os.path.exists(f"{new_dir}/{new_name}"):
-                new_name = generate_random_string() + new_name
+                new_name = "".join([choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") for _ in range(5)]) + "_" + new_name
             os.rename(f"{new_dir}/{text_file}", f"{new_dir}/{new_name}")
             print(f"{green}[+]{reset} RENAMED {cyan}{text_file}{reset} TO {cyan}{new_name}{reset}")
         else:
@@ -105,7 +92,6 @@ def parse_arguments():
 
 
 def main():
-    signal(SIGINT, signal_handler)
     args = parse_arguments()
 
     if not (args.modify or args.rename):
@@ -122,32 +108,21 @@ def main():
 
     new_dir = f"{args.directory}/cleaned_files"
     filter_list = load_json(args.filter)
-    text_files = [f"{args.directory}/{item}" for item in os.listdir(args.directory) if os.path.isfile(f"{args.directory}/{item}")]
-
-    if not text_files:
-        print(f"{red}[X]{reset} NO FILES IN DIRECTORY")
-        exit(1)
 
     if os.path.exists(new_dir):
         rmtree(new_dir)
     os.makedirs(new_dir)
 
-    if args.modify and args.rename:
-        clean_files(text_files, filter_list, new_dir)
-        print(f"{magenta}{'-' * os.get_terminal_size().columns}{reset}")
-        rename_files(filter_list, new_dir)
-        exit(0)
+    for text_file in [f"{args.directory}/{item}" for item in os.listdir(args.directory) if os.path.isfile(f"{args.directory}/{item}")]:
+        copy(text_file, new_dir)
 
     if args.modify:
-        clean_files(text_files, filter_list, new_dir)
-        exit(0)
+        clean_files(filter_list, new_dir)
 
     if args.rename:
-        for text_file in text_files:
-            copy(text_file, new_dir)
         rename_files(filter_list, new_dir)
-        exit(0)
 
 
 if __name__ == "__main__":
+    signal(SIGINT, signal_handler)
     main()
