@@ -9,13 +9,6 @@ from charset_normalizer import from_path
 from random import choice
 from signal import signal, SIGINT
 
-init()
-cyan = Fore.CYAN
-yellow = Fore.YELLOW
-green = Fore.GREEN
-red = Fore.RED
-reset = Fore.RESET
-
 
 def signal_handler(signal, frame):
     exit(1)
@@ -26,10 +19,10 @@ def load_json(json_file):
         with open(json_file, "r") as jf:
             arr = load(jf)
     except JSONDecodeError:
-        print(f"{red}[X]{reset} FAILED TO LOAD JSON FILE")
+        print(f"{Fore.RED}[X]{Fore.RESET} FAILED TO LOAD JSON FILE")
         exit(1)
     except FileNotFoundError:
-        print(f"{red}[X]{reset} JSON FILE NOT FOUND")
+        print(f"{Fore.RED}[X]{Fore.RESET} JSON FILE NOT FOUND")
         exit(1)
     return arr
 
@@ -43,7 +36,7 @@ def clean_files(filter_list, new_dir):
             f = open(text_file, "r+", encoding=enc_type)
             text = f.read()
         except Exception:
-            print(f"{red}[X]{reset} FAILED TO READ {cyan}{os.path.basename(text_file)}{reset}")
+            print(f"{Fore.RED}[X]{Fore.RESET} FAILED TO READ {Fore.CYAN}{os.path.basename(text_file)}{Fore.RESET}")
             continue
 
         for regex, substitute in filter_list.items():
@@ -54,9 +47,9 @@ def clean_files(filter_list, new_dir):
             f.seek(0)
             f.write(text)
             f.truncate()
-            print(f"{green}[+]{reset} CHANGED {cyan}{count}{reset} MATCHES FROM {cyan}{os.path.basename(text_file)}{reset}")
+            print(f"{Fore.GREEN}[+]{Fore.RESET} CHANGED {Fore.CYAN}{count}{Fore.RESET} MATCHES FROM {Fore.CYAN}{os.path.basename(text_file)}{Fore.RESET}")
         else:
-            print(f"{yellow}[!]{reset} NO CHANGES FROM {cyan}{os.path.basename(text_file)}{reset}")
+            print(f"{Fore.YELLOW}[!]{Fore.RESET} NO CHANGES FROM {Fore.CYAN}{os.path.basename(text_file)}{Fore.RESET}")
 
         f.close()
 
@@ -73,9 +66,9 @@ def rename_files(filter_list, new_dir):
             if os.path.exists(f"{new_dir}/{new_name}"):
                 new_name = "".join([choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") for _ in range(5)]) + "_" + new_name
             os.rename(f"{new_dir}/{text_file}", f"{new_dir}/{new_name}")
-            print(f"{green}[+]{reset} RENAMED {cyan}{text_file}{reset} TO {cyan}{new_name}{reset}")
+            print(f"{Fore.GREEN}[+]{Fore.RESET} RENAMED {Fore.CYAN}{text_file}{Fore.RESET} TO {Fore.CYAN}{new_name}{Fore.RESET}")
         else:
-            print(f"{yellow}[!]{reset} DID NOT RENAME {cyan}{text_file}{reset}")
+            print(f"{Fore.YELLOW}[!]{Fore.RESET} DID NOT RENAME {Fore.CYAN}{text_file}{Fore.RESET}")
 
 
 def parse_arguments():
@@ -92,37 +85,48 @@ def parse_arguments():
 
 
 def main():
+    signal(SIGINT, signal_handler)
+    init()
     args = parse_arguments()
 
     if not (args.modify or args.rename):
-        print(f"{red}[X]{reset} YOU NEED TO USE --modify AND/OR --rename MODIFIERS")
+        print(f"{Fore.RED}[X]{Fore.RESET} YOU NEED TO USE --modify AND/OR --rename MODIFIERS")
         exit(1)
 
     if not os.path.exists(args.directory):
-        print(f"{red}[X]{reset} DIRECTORY NOT FOUND")
+        print(f"{Fore.RED}[X]{Fore.RESET} DIRECTORY NOT FOUND")
         exit(1)
 
     if not os.path.isdir(args.directory):
-        print(f"{red}[X]{reset} {cyan}{args.directory}{reset} IS NOT A DIRECTORY")
+        print(f"{Fore.RED}[X]{Fore.RESET} {Fore.CYAN}{args.directory}{Fore.RESET} IS NOT A DIRECTORY")
         exit(1)
 
     new_dir = f"{args.directory}/cleaned_files"
     filter_list = load_json(args.filter)
+    text_files = [f"{args.directory}/{item}" for item in os.listdir(args.directory) if os.path.isfile(f"{args.directory}/{item}")]
+
+    if not text_files:
+        print(f"{Fore.RED}[X]{Fore.RESET} NO FILES IN DIRECTORY")
+        exit(1)
 
     if os.path.exists(new_dir):
         rmtree(new_dir)
     os.makedirs(new_dir)
 
-    for text_file in [f"{args.directory}/{item}" for item in os.listdir(args.directory) if os.path.isfile(f"{args.directory}/{item}")]:
+    for text_file in text_files:
         copy(text_file, new_dir)
+
+    del text_files
 
     if args.modify:
         clean_files(filter_list, new_dir)
+
+    if args.modify and args.rename:
+        print(f"{Fore.MAGENTA}{'=' * os.get_terminal_size().columns}{Fore.RESET}")
 
     if args.rename:
         rename_files(filter_list, new_dir)
 
 
 if __name__ == "__main__":
-    signal(SIGINT, signal_handler)
     main()
