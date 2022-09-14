@@ -1,13 +1,14 @@
 import os
-from shutil import copy, rmtree
-from re import findall, sub, IGNORECASE
-from colorama import Fore, init
-from json import load, JSONDecodeError
 from argparse import ArgumentParser
-from sys import exit
-from charset_normalizer import from_path
+from json import JSONDecodeError, load
 from random import choice
-from signal import signal, SIGINT
+from re import IGNORECASE, findall, sub
+from shutil import copy, rmtree
+from signal import SIGINT, signal
+from sys import exit
+
+from charset_normalizer import from_path
+from colorama import Fore, init
 
 
 def signal_handler(signal, frame):
