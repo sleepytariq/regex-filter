@@ -5,8 +5,9 @@ import sys
 import json
 import shutil
 import re
-import zipfile
 import gzip
+import zipfile
+import tarfile
 from argparse import ArgumentParser
 from charset_normalizer import from_path
 from colorama import Fore, Back, Style, init
@@ -41,10 +42,10 @@ def clean_a_file(filter_list: dict, file: str):
     count = 0
     try:
         enc_type = from_path(file).best().encoding
-        f = open(file, "r+", encoding=enc_type)
-        text = f.read()
+        with open(file, "r", encoding=enc_type) as f:
+            text = f.read()
     except Exception:
-        show_error(f"failed to read {os.path.basename(file)}")
+        show_error(f"(read error) {file}")
         return
 
     for regex, substitute in filter_list.items():
@@ -52,14 +53,11 @@ def clean_a_file(filter_list: dict, file: str):
         text = re.sub(regex, substitute, text, flags=re.IGNORECASE)
 
     if count > 0:
-        f.seek(0)
-        f.write(text)
-        f.truncate()
+        with open(file, "w", encoding=enc_type) as f:
+            f.write(text)
         show_change(f"({count}) {file}")
     else:
-        show_info(f"no changes to {file}")
-
-    f.close()
+        show_info(f"(no changes) {file}")
 
 
 def clean_files(filter_list: dict, directory: str):
@@ -72,32 +70,46 @@ def clean_files(filter_list: dict, directory: str):
         if zipfile.is_zipfile(file):
             shutil.unpack_archive(file, directory)
             os.remove(file)
-            file = file.replace(".zip", "")
-            if os.path.isdir(file):
-                clean_files(filter_list, file)
-                shutil.make_archive(file, "zip", file)
-                shutil.rmtree(file)
+            temp = file.replace(".zip", "")
+            if os.path.isdir(temp):
+                clean_files(filter_list, temp)
+                shutil.make_archive(temp, "zip", temp)
+                shutil.rmtree(temp)
             else:
-                clean_a_file(filter_list, file)
-                with zipfile.ZipFile(file + ".zip", "w") as zf:
-                    zf.write(file, arcname=os.path.basename(file))
-                os.remove(file)
+                clean_a_file(filter_list, temp)
+                with zipfile.ZipFile(file, "w") as zf:
+                    zf.write(temp, arcname=os.path.basename(temp))
+                os.remove(temp)
+            continue
+
+        if tarfile.is_tarfile(file):
+            temp = file.replace(".tar.gz", "")
+            temp = temp.replace(".tgz", "")
+            os.makedirs(temp)
+            shutil.unpack_archive(file, temp)
+            os.remove(file)
+            clean_files(filter_list, temp)
+            out_files = [os.path.join(temp, item) for item in os.listdir(temp)]
+            with tarfile.open(file, "w:gz") as tf:
+                for out_file in out_files:
+                    tf.add(out_file, arcname=os.path.basename(out_file))
+            shutil.rmtree(temp)
             continue
 
         if file.endswith(".gz"):
-            file = file.replace(".gz", "")
+            temp = file.replace(".gz", "")
 
-            with gzip.open(file + ".gz", "rb") as gzf:
-                with open(file, "wb") as f:
+            with gzip.open(file, "rb") as gzf:
+                with open(temp, "wb") as f:
                     f.write(gzf.read())
 
-            clean_a_file(filter_list, file)
+            clean_a_file(filter_list, temp)
 
-            with open(file, "rb") as f:
-                with gzip.open(file + ".gz", "wb") as gzf:
+            with open(temp, "rb") as f:
+                with gzip.open(file, "wb") as gzf:
                     gzf.write(f.read())
 
-            os.remove(file)
+            os.remove(temp)
             continue
 
         clean_a_file(filter_list, file)
