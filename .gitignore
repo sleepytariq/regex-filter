@@ -1,3 +1,4 @@
 .venv/
+.DS_Store
 filter.json
-test_files/
+test_files*/
