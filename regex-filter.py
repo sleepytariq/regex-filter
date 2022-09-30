@@ -5,6 +5,8 @@ import sys
 import json
 import shutil
 import re
+import zipfile
+import gzip
 from argparse import ArgumentParser
 from charset_normalizer import from_path
 from colorama import Fore, Back, Style, init
@@ -67,21 +69,39 @@ def clean_files(filter_list: dict, directory: str):
             clean_files(filter_list, file)
             continue
 
-        if file.endswith(".zip"):
+        if zipfile.is_zipfile(file):
             shutil.unpack_archive(file, directory)
             os.remove(file)
             file = file.replace(".zip", "")
             if os.path.isdir(file):
                 clean_files(filter_list, file)
-                shutil.make_archive(file, "zip")
+                shutil.make_archive(file, "zip", file)
                 shutil.rmtree(file)
             else:
                 clean_a_file(filter_list, file)
-                shutil.make_archive(file, "zip")
+                with zipfile.ZipFile(file + ".zip", "w") as zf:
+                    zf.write(file, arcname=os.path.basename(file))
                 os.remove(file)
             continue
 
+        if file.endswith(".gz"):
+            file = file.replace(".gz", "")
+
+            with gzip.open(file + ".gz", "rb") as gzf:
+                with open(file, "wb") as f:
+                    f.write(gzf.read())
+
+            clean_a_file(filter_list, file)
+
+            with open(file, "rb") as f:
+                with gzip.open(file + ".gz", "wb") as gzf:
+                    gzf.write(f.read())
+
+            os.remove(file)
+            continue
+
         clean_a_file(filter_list, file)
+
 
 def parse_arguments():
     parser = ArgumentParser(
