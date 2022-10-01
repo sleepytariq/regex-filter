@@ -74,10 +74,10 @@ def clean_files(filter_list: dict, directory: str):
                 continue
             os.remove(file)
             clean_files(filter_list, temp)
-            out_files = [os.path.join(temp, item) for item in os.listdir(temp)]
             with zipfile.ZipFile(file, "w", zipfile.ZIP_DEFLATED) as zf:
-                for out_file in out_files:
-                    zf.write(out_file, arcname=os.path.basename(out_file))
+                for root, dirs, files in os.walk(temp):
+                    for f in files:
+                        zf.write(os.path.join(root, f), arcname=os.path.join(root.replace(temp, ""), f))
             shutil.rmtree(temp)
             continue
 
@@ -98,10 +98,10 @@ def clean_files(filter_list: dict, directory: str):
                 continue
             os.remove(file)
             clean_files(filter_list, temp)
-            out_files = [os.path.join(temp, item) for item in os.listdir(temp)]
             with tarfile.open(file, "w" + arctype) as tf:
-                for out_file in out_files:
-                    tf.add(out_file, arcname=os.path.basename(out_file))
+                for root, dirs, files in os.walk(temp):
+                    for f in files:
+                        tf.add(os.path.join(root, f), arcname=os.path.join(root.replace(temp, ""), f))
             shutil.rmtree(temp)
             continue
 
