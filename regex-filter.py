@@ -66,8 +66,12 @@ def clean_files(filter_list: dict, directory: str):
         if zipfile.is_zipfile(file):
             temp = file.replace(".zip", "")
             os.makedirs(temp)
-            with zipfile.ZipFile(file, "r") as zf:
-                zf.extractall(temp)
+            try:
+                with zipfile.ZipFile(file, "r") as zf:
+                    zf.extractall(temp)
+            except zipfile.ExtractError:
+                show_error(f"failed to extract {file}")
+                continue
             os.remove(file)
             clean_files(filter_list, temp)
             out_files = [os.path.join(temp, item) for item in os.listdir(temp)]
@@ -86,8 +90,12 @@ def clean_files(filter_list: dict, directory: str):
                 temp = temp.replace(".tgz", "")
                 arctype = ":gz"
             os.makedirs(temp)
-            with tarfile.open(file, "r" + arctype) as tf:
-                tf.extractall(temp)
+            try:
+                with tarfile.open(file, "r" + arctype) as tf:
+                    tf.extractall(temp)
+            except tarfile.ExtractError:
+                show_error(f"failed to extract {file}")
+                continue
             os.remove(file)
             clean_files(filter_list, temp)
             out_files = [os.path.join(temp, item) for item in os.listdir(temp)]
@@ -99,9 +107,13 @@ def clean_files(filter_list: dict, directory: str):
 
         if file.endswith(".gz"):
             temp = file.replace(".gz", "")
-            with gzip.open(file, "rb") as gzf:
-                with open(temp, "wb") as f:
-                    f.write(gzf.read())
+            try:
+                with gzip.open(file, "rb") as gzf:
+                    with open(temp, "wb") as f:
+                        f.write(gzf.read())
+            except gzip.ExtractError:
+                show_error(f"failed to extract {file}")
+                continue
             clean_a_file(filter_list, temp)
             with open(temp, "rb") as f:
                 with gzip.open(file, "wb") as gzf:
