@@ -70,7 +70,7 @@ def clean_files(filter_list: dict, directory: str):
                 with zipfile.ZipFile(file, "r") as zf:
                     zf.extractall(temp)
             except RuntimeError:
-                show_error(f"failed to extract {file}")
+                show_error(f"failed to extract {file.split('CLEAN')[1]}")
                 continue
             os.remove(file)
             clean_files(filter_list, temp)
@@ -94,7 +94,7 @@ def clean_files(filter_list: dict, directory: str):
                 with tarfile.open(file, "r" + arctype) as tf:
                     tf.extractall(temp)
             except tarfile.ExtractError:
-                show_error(f"failed to extract {file}")
+                show_error(f"failed to extract {file.split('CLEAN')[1]}")
                 continue
             os.remove(file)
             clean_files(filter_list, temp)
@@ -112,7 +112,7 @@ def clean_files(filter_list: dict, directory: str):
                     with open(temp, "wb") as f:
                         f.write(gzf.read())
             except gzip.ExtractError:
-                show_error(f"failed to extract {file}")
+                show_error(f"failed to extract {file.split('CLEAN')[1]}")
                 continue
             clean_a_file(filter_list, temp)
             with open(temp, "rb") as f:
