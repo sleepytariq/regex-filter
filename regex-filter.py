@@ -69,7 +69,7 @@ def clean_files(filter_list: dict, directory: str):
             try:
                 with zipfile.ZipFile(file, "r") as zf:
                     zf.extractall(temp)
-            except zipfile.ExtractError:
+            except RuntimeError:
                 show_error(f"failed to extract {file}")
                 continue
             os.remove(file)
