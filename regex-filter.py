@@ -75,7 +75,7 @@ def clean_files(filter_list: dict, directory: str):
             os.remove(file)
             clean_files(filter_list, temp)
             out_files = [os.path.join(temp, item) for item in os.listdir(temp)]
-            with zipfile.ZipFile(file, "w") as zf:
+            with zipfile.ZipFile(file, "w", zipfile.ZIP_DEFLATED) as zf:
                 for out_file in out_files:
                     zf.write(out_file, arcname=os.path.basename(out_file))
             shutil.rmtree(temp)
