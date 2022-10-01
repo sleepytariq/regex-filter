@@ -10,19 +10,17 @@ import zipfile
 import tarfile
 from argparse import ArgumentParser
 from charset_normalizer import from_path
-from colorama import Fore, Back, Style, init
+from colorama import Fore, Style, init
 
 
 def show_error(message: str):
-    print(f"{Style.BRIGHT}{Fore.WHITE}{Back.RED}ERROR{Style.RESET_ALL} {message}")
+    print(f"{Style.BRIGHT}{Fore.LIGHTRED_EX}Error:{Style.RESET_ALL} {message}")
 
 
-def show_info(message: str):
-    print(f"{Style.BRIGHT}{Fore.WHITE}{Back.BLUE}INFO{Style.RESET_ALL} {message}")
-
-
-def show_change(message: str):
-    print(f"{Style.BRIGHT}{Fore.WHITE}{Back.GREEN}CHANGED{Style.RESET_ALL} {message}")
+def show_change(count: int, path: str):
+    print(
+        f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX if count > 0 else Fore.LIGHTBLUE_EX}({count}):{Style.RESET_ALL} {path}"
+    )
 
 
 def load_json(json_file: str):
@@ -39,13 +37,14 @@ def load_json(json_file: str):
 
 
 def clean_a_file(filter_list: dict, file: str):
+    file_rel_path = file.split("CLEAN")[1]
     count = 0
     try:
         enc_type = from_path(file).best().encoding
         with open(file, "r", encoding=enc_type) as f:
             text = f.read()
     except Exception:
-        show_error(f"(read error) {file}")
+        show_error(f"failed to read {file_rel_path}")
         return
 
     for regex, substitute in filter_list.items():
@@ -55,42 +54,44 @@ def clean_a_file(filter_list: dict, file: str):
     if count > 0:
         with open(file, "w", encoding=enc_type) as f:
             f.write(text)
-        show_change(f"({count}) {file}")
-    else:
-        show_info(f"(no changes) {file}")
+    show_change(count, file_rel_path)
 
 
 def clean_files(filter_list: dict, directory: str):
     for file in [os.path.join(directory, item) for item in os.listdir(directory)]:
-
         if os.path.isdir(file):
             clean_files(filter_list, file)
             continue
 
         if zipfile.is_zipfile(file):
-            shutil.unpack_archive(file, directory)
-            os.remove(file)
             temp = file.replace(".zip", "")
-            if os.path.isdir(temp):
-                clean_files(filter_list, temp)
-                shutil.make_archive(temp, "zip", temp)
-                shutil.rmtree(temp)
-            else:
-                clean_a_file(filter_list, temp)
-                with zipfile.ZipFile(file, "w") as zf:
-                    zf.write(temp, arcname=os.path.basename(temp))
-                os.remove(temp)
-            continue
-
-        if tarfile.is_tarfile(file):
-            temp = file.replace(".tar.gz", "")
-            temp = temp.replace(".tgz", "")
             os.makedirs(temp)
-            shutil.unpack_archive(file, temp)
+            with zipfile.ZipFile(file, "r") as zf:
+                zf.extractall(temp)
             os.remove(file)
             clean_files(filter_list, temp)
             out_files = [os.path.join(temp, item) for item in os.listdir(temp)]
-            with tarfile.open(file, "w:gz") as tf:
+            with zipfile.ZipFile(file, "w") as zf:
+                for out_file in out_files:
+                    zf.write(out_file, arcname=os.path.basename(out_file))
+            shutil.rmtree(temp)
+            continue
+
+        if tarfile.is_tarfile(file):
+            if file.endswith("tar"):
+                temp = file.replace(".tar", "")
+                arctype = ""
+            elif file.endswith("gz"):
+                temp = file.replace(".tar.gz", "")
+                temp = temp.replace(".tgz", "")
+                arctype = ":gz"
+            os.makedirs(temp)
+            with tarfile.open(file, "r" + arctype) as tf:
+                tf.extractall(temp)
+            os.remove(file)
+            clean_files(filter_list, temp)
+            out_files = [os.path.join(temp, item) for item in os.listdir(temp)]
+            with tarfile.open(file, "w" + arctype) as tf:
                 for out_file in out_files:
                     tf.add(out_file, arcname=os.path.basename(out_file))
             shutil.rmtree(temp)
@@ -98,17 +99,13 @@ def clean_files(filter_list: dict, directory: str):
 
         if file.endswith(".gz"):
             temp = file.replace(".gz", "")
-
             with gzip.open(file, "rb") as gzf:
                 with open(temp, "wb") as f:
                     f.write(gzf.read())
-
             clean_a_file(filter_list, temp)
-
             with open(temp, "rb") as f:
                 with gzip.open(file, "wb") as gzf:
                     gzf.write(f.read())
-
             os.remove(temp)
             continue
 
@@ -143,34 +140,33 @@ def parse_arguments():
 
 
 def main():
+    try:
+        init()
+        args = parse_arguments()
 
-    init()
+        if not os.path.exists(args.directory):
+            show_error("directory not found")
+            sys.exit(1)
 
-    args = parse_arguments()
+        if not os.path.isdir(args.directory):
+            show_error(f"{args.directory} is not a directory")
+            sys.exit(1)
 
-    if not os.path.exists(args.directory):
-        show_error("directory not found")
+        if not os.listdir(args.directory):
+            show_error("no files in directory")
+            sys.exit(1)
+
+        new_dir = os.path.join(args.directory, "CLEAN")
+
+        if os.path.exists(new_dir):
+            shutil.rmtree(new_dir)
+
+        shutil.copytree(args.directory, new_dir)
+        filter_list = load_json(args.filter)
+        clean_files(filter_list, new_dir)
+    except KeyboardInterrupt:
         sys.exit(1)
-
-    if not os.path.isdir(args.directory):
-        show_error(f"{args.directory} is not a directory")
-        sys.exit(1)
-
-    if not os.path.exists(args.directory.rstrip("/") + "_bak"):
-        shutil.copytree(args.directory, args.directory.rstrip("/") + "_bak")
-
-    filter_list = load_json(args.filter)
-    files = [os.path.join(args.directory, item) for item in os.listdir(args.directory)]
-
-    if not files:
-        show_error("no files in directory")
-        sys.exit(1)
-
-    clean_files(filter_list, args.directory)
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        sys.exit(1)
+    main()
