@@ -111,7 +111,7 @@ def clean_files(filter_list: dict, directory: str):
                 with gzip.open(file, "rb") as gzf:
                     with open(temp, "wb") as f:
                         f.write(gzf.read())
-            except gzip.ExtractError:
+            except gzip.BadGzipFile:
                 show_error(f"failed to extract {file.split('CLEAN')[1]}")
                 continue
             clean_a_file(filter_list, temp)
