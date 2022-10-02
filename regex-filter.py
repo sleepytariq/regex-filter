@@ -10,30 +10,28 @@ import zipfile
 import tarfile
 from argparse import ArgumentParser
 from charset_normalizer import from_path
-from colorama import Fore, Style, init
+from colorama import Fore, init
 
 
 def show_error(message: str):
-    print(f"{Style.BRIGHT}{Fore.LIGHTRED_EX}Error:{Style.RESET_ALL} {message}")
+    print(f"{Fore.RED}Error:{Fore.RESET} {message}")
 
 
 def show_change(count: int, path: str):
-    print(
-        f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX if count > 0 else Fore.LIGHTBLUE_EX}({count}):{Style.RESET_ALL} {path}"
-    )
+    print(f"{Fore.GREEN if count else Fore.YELLOW}{count}:{Fore.RESET} {path}")
 
 
 def load_json(path: str):
     try:
         with open(path, "r") as f:
             dictionary = json.load(f)
+        return dictionary
     except json.JSONDecodeError:
         show_error("failed to load json file")
         sys.exit(1)
     except FileNotFoundError:
         show_error("json file not found")
         sys.exit(1)
-    return dictionary
 
 
 def handle_zip(path: str):
@@ -43,10 +41,10 @@ def handle_zip(path: str):
         with zipfile.ZipFile(path, "r") as zf:
             zf.extractall(temp)
     except RuntimeError:
-        show_error(f"failed to extract {path.split('CLEAN')[1]}")
+        show_error(f"failed to extract {path.replace(new_dir, '')}")
         return
-    os.remove(path)
     clean_files(temp)
+    os.remove(path)
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
         for zroot, zdirs, zfilenames in os.walk(temp):
             for zfilename in zfilenames:
@@ -56,22 +54,22 @@ def handle_zip(path: str):
 
 
 def handle_tar(path: str):
-    if path.endswith("tar"):
-        temp = path.replace(".tar", "")
-        arctype = ""
-    elif path.endswith("gz"):
+    if path.endswith("gz"):
         temp = path.replace(".tar.gz", "")
         temp = temp.replace(".tgz", "")
         arctype = ":gz"
+    else:
+        temp = path.replace(".tar", "")
+        arctype = ""
     os.makedirs(temp)
     try:
         with tarfile.open(path, "r" + arctype) as tf:
             tf.extractall(temp)
     except tarfile.ExtractError:
-        show_error(f"failed to extract {path.split('CLEAN')[1]}")
+        show_error(f"failed to extract {path.replace(new_dir, '')}")
         return
-    os.remove(path)
     clean_files(temp)
+    os.remove(path)
     with tarfile.open(path, "w" + arctype) as tf:
         for troot, tdirs, tfilenames in os.walk(temp):
             for tfilename in tfilenames:
@@ -87,7 +85,7 @@ def handle_gzip(path: str):
             with open(temp, "wb") as f:
                 f.write(gzf.read())
     except gzip.BadGzipFile:
-        show_error(f"failed to extract {path.split('CLEAN')[1]}")
+        show_error(f"failed to extract {path.replace(new_dir, '')}")
         return
 
     clean_a_file(temp)
@@ -100,7 +98,7 @@ def handle_gzip(path: str):
 
 
 def clean_a_file(path: str):
-    rel_path = path.split("CLEAN")[1]
+    rel_path = path.replace(new_dir, "")
     count = 0
     try:
         enc_type = from_path(path).best().encoding
@@ -114,7 +112,7 @@ def clean_a_file(path: str):
         count += len(re.findall(regex, text, flags=re.IGNORECASE))
         text = re.sub(regex, substitute, text, flags=re.IGNORECASE)
 
-    if count > 0:
+    if count:
         with open(path, "w", encoding=enc_type) as f:
             f.write(text)
     show_change(count, rel_path)
@@ -184,14 +182,16 @@ def main():
             show_error("no files in directory")
             sys.exit(1)
 
+        global filter_list
+        filter_list = load_json(args.filter)
+
+        global new_dir
         new_dir = os.path.join(args.directory, "CLEAN")
 
         if os.path.exists(new_dir):
             shutil.rmtree(new_dir)
-
         shutil.copytree(args.directory, new_dir)
-        global filter_list
-        filter_list = load_json(args.filter)
+
         clean_files(new_dir)
     except KeyboardInterrupt:
         sys.exit(1)
