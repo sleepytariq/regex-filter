@@ -23,28 +23,91 @@ def show_change(count: int, path: str):
     )
 
 
-def load_json(json_file: str):
+def load_json(path: str):
     try:
-        with open(json_file, "r") as f:
-            arr = json.load(f)
+        with open(path, "r") as f:
+            dictionary = json.load(f)
     except json.JSONDecodeError:
         show_error("failed to load json file")
         sys.exit(1)
     except FileNotFoundError:
         show_error("json file not found")
         sys.exit(1)
-    return arr
+    return dictionary
 
 
-def clean_a_file(filter_list: dict, file: str):
-    file_rel_path = file.split("CLEAN")[1]
+def handle_zip(path: str):
+    temp = path.replace(".zip", "")
+    os.makedirs(temp)
+    try:
+        with zipfile.ZipFile(path, "r") as zf:
+            zf.extractall(temp)
+    except RuntimeError:
+        show_error(f"failed to extract {path.split('CLEAN')[1]}")
+        return
+    os.remove(path)
+    clean_files(temp)
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for zroot, zdirs, zfilenames in os.walk(temp):
+            for zfilename in zfilenames:
+                zpath = os.path.join(zroot, zfilename)
+                zf.write(zpath, arcname=zpath.replace(temp, ""))
+    shutil.rmtree(temp)
+
+
+def handle_tar(path: str):
+    if path.endswith("tar"):
+        temp = path.replace(".tar", "")
+        arctype = ""
+    elif path.endswith("gz"):
+        temp = path.replace(".tar.gz", "")
+        temp = temp.replace(".tgz", "")
+        arctype = ":gz"
+    os.makedirs(temp)
+    try:
+        with tarfile.open(path, "r" + arctype) as tf:
+            tf.extractall(temp)
+    except tarfile.ExtractError:
+        show_error(f"failed to extract {path.split('CLEAN')[1]}")
+        return
+    os.remove(path)
+    clean_files(temp)
+    with tarfile.open(path, "w" + arctype) as tf:
+        for troot, tdirs, tfilenames in os.walk(temp):
+            for tfilename in tfilenames:
+                tpath = os.path.join(troot, tfilename)
+                tf.add(tpath, arcname=tpath.replace(temp, ""))
+    shutil.rmtree(temp)
+
+
+def handle_gzip(path: str):
+    temp = path.replace(".gz", "")
+    try:
+        with gzip.open(path, "rb") as gzf:
+            with open(temp, "wb") as f:
+                f.write(gzf.read())
+    except gzip.BadGzipFile:
+        show_error(f"failed to extract {path.split('CLEAN')[1]}")
+        return
+
+    clean_a_file(temp)
+
+    with open(temp, "rb") as f:
+        with gzip.open(path, "wb") as gzf:
+            gzf.write(f.read())
+
+    os.remove(temp)
+
+
+def clean_a_file(path: str):
+    rel_path = path.split("CLEAN")[1]
     count = 0
     try:
-        enc_type = from_path(file).best().encoding
-        with open(file, "r", encoding=enc_type) as f:
+        enc_type = from_path(path).best().encoding
+        with open(path, "r", encoding=enc_type) as f:
             text = f.read()
     except Exception:
-        show_error(f"failed to read {file_rel_path}")
+        show_error(f"failed to read {rel_path}")
         return
 
     for regex, substitute in filter_list.items():
@@ -52,82 +115,29 @@ def clean_a_file(filter_list: dict, file: str):
         text = re.sub(regex, substitute, text, flags=re.IGNORECASE)
 
     if count > 0:
-        with open(file, "w", encoding=enc_type) as f:
+        with open(path, "w", encoding=enc_type) as f:
             f.write(text)
-    show_change(count, file_rel_path)
+    show_change(count, rel_path)
 
 
-def clean_files(filter_list: dict, directory: str):
-    for file in [os.path.join(directory, item) for item in os.listdir(directory)]:
-        if os.path.isdir(file):
-            clean_files(filter_list, file)
-            continue
+def clean_files(dir: str):
+    for root, dirs, filenames in os.walk(dir):
+        for filename in filenames:
+            path = os.path.join(root, filename)
 
-        if zipfile.is_zipfile(file):
-            temp = file.replace(".zip", "")
-            os.makedirs(temp)
-            try:
-                with zipfile.ZipFile(file, "r") as zf:
-                    zf.extractall(temp)
-            except RuntimeError:
-                show_error(f"failed to extract {file.split('CLEAN')[1]}")
+            if zipfile.is_zipfile(path):
+                handle_zip(path)
                 continue
-            os.remove(file)
-            clean_files(filter_list, temp)
-            with zipfile.ZipFile(file, "w", zipfile.ZIP_DEFLATED) as zf:
-                for root, dirs, files in os.walk(temp):
-                    for f in files:
-                        zf.write(
-                            os.path.join(root, f),
-                            arcname=os.path.join(root.replace(temp, ""), f),
-                        )
-            shutil.rmtree(temp)
-            continue
 
-        if tarfile.is_tarfile(file):
-            if file.endswith("tar"):
-                temp = file.replace(".tar", "")
-                arctype = ""
-            elif file.endswith("gz"):
-                temp = file.replace(".tar.gz", "")
-                temp = temp.replace(".tgz", "")
-                arctype = ":gz"
-            os.makedirs(temp)
-            try:
-                with tarfile.open(file, "r" + arctype) as tf:
-                    tf.extractall(temp)
-            except tarfile.ExtractError:
-                show_error(f"failed to extract {file.split('CLEAN')[1]}")
+            if tarfile.is_tarfile(path):
+                handle_tar(path)
                 continue
-            os.remove(file)
-            clean_files(filter_list, temp)
-            with tarfile.open(file, "w" + arctype) as tf:
-                for root, dirs, files in os.walk(temp):
-                    for f in files:
-                        tf.add(
-                            os.path.join(root, f),
-                            arcname=os.path.join(root.replace(temp, ""), f),
-                        )
-            shutil.rmtree(temp)
-            continue
 
-        if file.endswith(".gz"):
-            temp = file.replace(".gz", "")
-            try:
-                with gzip.open(file, "rb") as gzf:
-                    with open(temp, "wb") as f:
-                        f.write(gzf.read())
-            except gzip.BadGzipFile:
-                show_error(f"failed to extract {file.split('CLEAN')[1]}")
+            if path.endswith(".gz"):
+                handle_gzip(path)
                 continue
-            clean_a_file(filter_list, temp)
-            with open(temp, "rb") as f:
-                with gzip.open(file, "wb") as gzf:
-                    gzf.write(f.read())
-            os.remove(temp)
-            continue
 
-        clean_a_file(filter_list, file)
+            clean_a_file(path)
 
 
 def parse_arguments():
@@ -180,8 +190,9 @@ def main():
             shutil.rmtree(new_dir)
 
         shutil.copytree(args.directory, new_dir)
+        global filter_list
         filter_list = load_json(args.filter)
-        clean_files(filter_list, new_dir)
+        clean_files(new_dir)
     except KeyboardInterrupt:
         sys.exit(1)
 
