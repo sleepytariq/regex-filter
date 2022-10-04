@@ -45,7 +45,9 @@ def handle_zip_content(path: str):
         with zipfile.ZipFile(path, "r") as zf:
             zf.extractall(temp)
     except RuntimeError:
-        show_error(f"failed to extract {path.replace(temp_dir, '')}")
+        show_error(
+            f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
+        )
         return
     clean_files(temp)
     os.remove(path)
@@ -64,7 +66,9 @@ def handle_zip_rename(path: str):
         with zipfile.ZipFile(path, "r") as zf:
             zf.extractall(temp)
     except RuntimeError:
-        show_error(f"failed to extract {path.replace(temp_dir, '')}")
+        show_error(
+            f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
+        )
         return
     rename_files(temp)
     os.remove(path)
@@ -90,7 +94,9 @@ def handle_tar_content(path: str):
         with tarfile.open(path, "r" + arctype) as tf:
             tf.extractall(temp)
     except tarfile.ExtractError:
-        show_error(f"failed to extract {path.replace(temp_dir, '')}")
+        show_error(
+            f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
+        )
         return
     clean_files(temp)
     os.remove(path)
@@ -115,7 +121,9 @@ def handle_tar_rename(path: str):
         with tarfile.open(path, "r" + arctype) as tf:
             tf.extractall(temp)
     except tarfile.ExtractError:
-        show_error(f"failed to extract {path.replace(temp_dir, '')}")
+        show_error(
+            f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
+        )
         return
     rename_files(temp)
     os.remove(path)
@@ -135,7 +143,9 @@ def handle_gzip_content(path: str):
             with open(temp, "wb") as f:
                 f.write(gzf.read())
     except gzip.BadGzipFile:
-        show_error(f"failed to extract {path.replace(temp_dir, '')}")
+        show_error(
+            f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
+        )
         return
 
 
@@ -194,7 +204,11 @@ def rename_a_file(path: str):
             new_path = os.path.join(os.path.dirname(path), new_name)
         os.rename(path, new_path)
         print(
-            f"{path.replace(temp_dir, '')} {Fore.GREEN}-->{Fore.RESET} {new_path.replace(temp_dir, '')}"
+            f"{path.replace(temp_dir, '').lstrip(os.path.sep)} {Fore.GREEN}-->{Fore.RESET} {new_path.replace(temp_dir, '').lstrip(os.path.sep)}"
+        )
+    else:
+        print(
+            f"{Fore.YELLOW}(!){Fore.RESET} {path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
 
 
