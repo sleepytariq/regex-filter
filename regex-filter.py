@@ -143,10 +143,16 @@ def handle_gzip_content(path: str):
             with open(temp, "wb") as f:
                 f.write(gzf.read())
     except gzip.BadGzipFile:
-        show_error(
-            f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
-        )
+        show_error(f"failed to extract {path.replace(temp_dir, '')}")
         return
+
+    clean_a_file(temp)
+
+    with open(temp, "rb") as f:
+        with gzip.open(path, "wb") as gzf:
+            gzf.write(f.read())
+
+    os.remove(temp)
 
 
 def clean_a_file(path: str):
@@ -208,7 +214,7 @@ def rename_a_file(path: str):
         )
     else:
         print(
-            f"{Fore.YELLOW}(!){Fore.RESET} {path.replace(temp_dir, '').lstrip(os.path.sep)}"
+            f"{Fore.YELLOW}!{Fore.RESET} {path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
 
 
