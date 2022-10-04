@@ -1,24 +1,26 @@
 # Usage
 ```console
-usage: regex-filter.py -d DIRECTORY -f FILTER [-m] [-r] [-h]
+usage: regex-filter.py -i INPUT [INPUT ...] -f FILTER -o OUTPUT [-m] [-r] [-h]
 
-Replace matched strings in file names or file content with specified substitute using regular expressions
+Replace matched strings in file content and filenames with specified substitute using regular expressions
 
 required:
-  -d DIRECTORY, --directory DIRECTORY
-                        path to a directory containing files
+  -i INPUT [INPUT ...], --input INPUT [INPUT ...]
+                        path to files or directories containing files
   -f FILTER, --filter FILTER
                         path to a json file in REGEX:WORD format
+  -o OUTPUT, --output OUTPUT
+                        path to output directory
 
 modifiers:
-  -m, --modify          use the filter to modify content of files
-  -r, --rename          use the filter to rename files
+  -m, --modify          use filter to modify content of files
+  -r, --rename          use filter to rename files
 
 optional:
   -h, --help            show this help message and exit
 ```
 
-The json file should be in `REGEX:WORD` format where the keys are the regex and the values are the word to replace matches with
+The json file must be in `REGEX:WORD` format where the keys are the regex and the values are the replacement
 
 ## Example
 ```json
@@ -27,4 +29,4 @@ The json file should be in `REGEX:WORD` format where the keys are the regex and 
 }
 ```
 
-A new directory named `cleaned_files` will be created in the given directory containing the new files
+A new directory named `REGEX_FILTER` will be created in the given output directory containing the cleaned input

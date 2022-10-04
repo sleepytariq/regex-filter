@@ -37,7 +37,7 @@ def get_random_string():
     return "".join([random.choice(chars) for _ in range(5)]) + "_"
 
 
-def handle_zip_content(path: str):
+def handle_zip(path: str, mode: str):
     temp = path.replace(".zip", "")
     os.makedirs(temp)
     try:
@@ -48,7 +48,7 @@ def handle_zip_content(path: str):
             f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
         return
-    clean_files(temp)
+    handle_files(temp, mode)
     os.remove(path)
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
         for zroot, zdirs, zfilenames in os.walk(temp):
@@ -56,31 +56,11 @@ def handle_zip_content(path: str):
                 zpath = os.path.join(zroot, zfilename)
                 zf.write(zpath, arcname=zpath.replace(temp, ""))
     shutil.rmtree(temp)
+    if mode == "rename":
+        rename_a_file(path)
 
 
-def handle_zip_rename(path: str):
-    temp = path.replace(".zip", "")
-    os.makedirs(temp)
-    try:
-        with zipfile.ZipFile(path, "r") as zf:
-            zf.extractall(temp)
-    except RuntimeError:
-        show_error(
-            f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
-        )
-        return
-    rename_files(temp)
-    os.remove(path)
-    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for zroot, zdirs, zfilenames in os.walk(temp):
-            for zfilename in zfilenames:
-                zpath = os.path.join(zroot, zfilename)
-                zf.write(zpath, arcname=zpath.replace(temp, ""))
-    shutil.rmtree(temp)
-    rename_a_file(path)
-
-
-def handle_tar_content(path: str):
+def handle_tar(path: str, mode: str):
     if path.endswith("gz"):
         temp = path.replace(".tar.gz", "")
         temp = temp.replace(".tgz", "")
@@ -97,7 +77,7 @@ def handle_tar_content(path: str):
             f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
         return
-    clean_files(temp)
+    handle_files(temp, mode)
     os.remove(path)
     with tarfile.open(path, "w" + arctype) as tf:
         for troot, tdirs, tfilenames in os.walk(temp):
@@ -105,37 +85,11 @@ def handle_tar_content(path: str):
                 tpath = os.path.join(troot, tfilename)
                 tf.add(tpath, arcname=tpath.replace(temp, ""))
     shutil.rmtree(temp)
+    if mode == "rename":
+        rename_a_file(path)
 
 
-def handle_tar_rename(path: str):
-    if path.endswith("gz"):
-        temp = path.replace(".tar.gz", "")
-        temp = temp.replace(".tgz", "")
-        arctype = ":gz"
-    else:
-        temp = path.replace(".tar", "")
-        arctype = ""
-    os.makedirs(temp)
-    try:
-        with tarfile.open(path, "r" + arctype) as tf:
-            tf.extractall(temp)
-    except tarfile.ExtractError:
-        show_error(
-            f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
-        )
-        return
-    rename_files(temp)
-    os.remove(path)
-    with tarfile.open(path, "w" + arctype) as tf:
-        for troot, tdirs, tfilenames in os.walk(temp):
-            for tfilename in tfilenames:
-                tpath = os.path.join(troot, tfilename)
-                tf.add(tpath, arcname=tpath.replace(temp, ""))
-    shutil.rmtree(temp)
-    rename_a_file(path)
-
-
-def handle_gzip_content(path: str):
+def handle_gzip(path: str):
     temp = path.replace(".gz", "")
     try:
         with gzip.open(path, "rb") as gzf:
@@ -145,7 +99,7 @@ def handle_gzip_content(path: str):
         show_error(f"failed to extract {path.replace(temp_dir, '')}")
         return
 
-    clean_a_file(temp)
+    modify_a_file(temp)
 
     with open(temp, "rb") as f:
         with gzip.open(path, "wb") as gzf:
@@ -154,7 +108,7 @@ def handle_gzip_content(path: str):
     os.remove(temp)
 
 
-def clean_a_file(path: str):
+def modify_a_file(path: str):
     count = 0
     try:
         enc_type = from_path(path).best().encoding
@@ -171,35 +125,13 @@ def clean_a_file(path: str):
     if count:
         with open(path, "w", encoding=enc_type) as f:
             f.write(text)
-        print(f"[CHANGED {count}]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
+        print(f"[MODIFIED {count}]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
     else:
-        print(f"[NOT CHANGED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
-
-
-def clean_files(dir: str):
-    for root, dirs, filenames in os.walk(dir):
-        for filename in filenames:
-            path = os.path.join(root, filename)
-
-            if zipfile.is_zipfile(path):
-                handle_zip_content(path)
-                continue
-
-            if tarfile.is_tarfile(path):
-                handle_tar_content(path)
-                continue
-
-            if path.endswith(".gz"):
-                handle_gzip_content(path)
-                continue
-
-            clean_a_file(path)
+        print(f"[NOT MODIFIED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
 
 
 def rename_a_file(path: str):
-    path = path.rstrip(os.path.sep)
-    name = os.path.basename(path)
-    new_name = name
+    new_name = name = os.path.basename(path)
     for regex, substitute in filter_list.items():
         new_name = re.sub(regex, substitute, new_name, flags=re.IGNORECASE)
 
@@ -216,22 +148,33 @@ def rename_a_file(path: str):
         print(f"[NOT RENAMED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
 
 
-def rename_files(dir: str):
+def handle_files(dir: str, mode: str):
     for path in [os.path.join(dir, item) for item in os.listdir(dir)]:
+
         if os.path.isdir(path):
-            rename_files(path)
-            rename_a_file(path)
+            if mode == "modify":
+                handle_files(path, "modify")
+            else:
+                handle_files(path, "rename")
+                rename_a_file(path)
             continue
 
         if zipfile.is_zipfile(path):
-            handle_zip_rename(path)
+            handle_zip(path, mode)
             continue
 
         if tarfile.is_tarfile(path):
-            handle_tar_rename(path)
+            handle_tar(path, mode)
             continue
 
-        rename_a_file(path)
+        if path.endswith(".gz") and mode == "modify":
+            handle_gzip(path)
+            continue
+
+        if mode == "modify":
+            modify_a_file(path)
+        else:
+            rename_a_file(path)
 
 
 def parse_arguments():
@@ -268,10 +211,10 @@ def parse_arguments():
         "-m",
         "--modify",
         action="store_true",
-        help="use the filter to modify content of files",
+        help="use filter to modify content of files",
     )
     modifiers.add_argument(
-        "-r", "--rename", action="store_true", help="use the filter to rename files"
+        "-r", "--rename", action="store_true", help="use filter to rename files"
     )
     optional.add_argument(
         "-h", "--help", action="help", help="show this help message and exit"
@@ -305,13 +248,13 @@ def main():
                 shutil.copyfile(item, os.path.join(temp_dir, os.path.basename(item)))
 
         if args.modify:
-            clean_files(temp_dir)
+            handle_files(temp_dir, "modify")
 
         if args.modify and args.rename:
             print("-" * os.get_terminal_size().columns)
 
         if args.rename:
-            rename_files(temp_dir)
+            handle_files(temp_dir, "rename")
 
         out_dir = os.path.join(args.output, "REGEX_FILTER")
 
