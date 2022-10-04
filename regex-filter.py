@@ -8,6 +8,7 @@ import re
 import gzip
 import zipfile
 import tarfile
+import tempfile
 from argparse import ArgumentParser
 from charset_normalizer import from_path
 from colorama import Fore, init
@@ -41,7 +42,7 @@ def handle_zip(path: str):
         with zipfile.ZipFile(path, "r") as zf:
             zf.extractall(temp)
     except RuntimeError:
-        show_error(f"failed to extract {path.replace(new_dir, '')}")
+        show_error(f"failed to extract {path.replace(temp_dir, '')}")
         return
     clean_files(temp)
     os.remove(path)
@@ -66,7 +67,7 @@ def handle_tar(path: str):
         with tarfile.open(path, "r" + arctype) as tf:
             tf.extractall(temp)
     except tarfile.ExtractError:
-        show_error(f"failed to extract {path.replace(new_dir, '')}")
+        show_error(f"failed to extract {path.replace(temp_dir, '')}")
         return
     clean_files(temp)
     os.remove(path)
@@ -85,7 +86,7 @@ def handle_gzip(path: str):
             with open(temp, "wb") as f:
                 f.write(gzf.read())
     except gzip.BadGzipFile:
-        show_error(f"failed to extract {path.replace(new_dir, '')}")
+        show_error(f"failed to extract {path.replace(temp_dir, '')}")
         return
 
     clean_a_file(temp)
@@ -98,7 +99,7 @@ def handle_gzip(path: str):
 
 
 def clean_a_file(path: str):
-    rel_path = path.replace(new_dir, "")
+    rel_path = path.replace(temp_dir, "").lstrip(os.path.sep)
     count = 0
     try:
         enc_type = from_path(path).best().encoding
@@ -146,10 +147,11 @@ def parse_arguments():
     required = parser.add_argument_group("required")
     optional = parser.add_argument_group("optional")
     required.add_argument(
-        "-d",
-        "--directory",
+        "-i",
+        "--input",
         type=str,
-        help="path to a directory containing files",
+        nargs="+",
+        help="path to files or directories containing files",
         required=True,
     )
     required.add_argument(
@@ -157,6 +159,13 @@ def parse_arguments():
         "--filter",
         type=str,
         help="path to a json file in REGEX:WORD format",
+        required=True,
+    )
+    required.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        help="path to output directory",
         required=True,
     )
     optional.add_argument(
@@ -170,30 +179,35 @@ def main():
         init()
         args = parse_arguments()
 
-        if not os.path.exists(args.directory):
-            show_error("directory not found")
-            sys.exit(1)
-
-        if not os.path.isdir(args.directory):
-            show_error(f"{args.directory} is not a directory")
-            sys.exit(1)
-
-        if not os.listdir(args.directory):
-            show_error("no files in directory")
-            sys.exit(1)
-
         global filter_list
         filter_list = load_json(args.filter)
 
-        global new_dir
-        new_dir = os.path.join(args.directory, "CLEAN")
+        global temp_dir
+        temp_dir = tempfile.mkdtemp()
 
-        if os.path.exists(new_dir):
-            shutil.rmtree(new_dir)
-        shutil.copytree(args.directory, new_dir)
+        for item in args.input:
+            if not os.path.exists(item):
+                show_error(f"{item} not found")
+                continue
 
-        clean_files(new_dir)
+            if os.path.isdir(item):
+                item = item.rstrip(os.path.sep)
+                shutil.copytree(item, os.path.join(temp_dir, os.path.basename(item)))
+            else:
+                shutil.copyfile(item, os.path.join(temp_dir, os.path.basename(item)))
+
+        clean_files(temp_dir)
+
+        out_dir = os.path.join(args.output, "REGEX_FILTER")
+
+        if os.path.exists(out_dir):
+            shutil.rmtree(out_dir)
+        shutil.move(temp_dir, out_dir)
     except KeyboardInterrupt:
+        try:
+            shutil.rmtree(temp_dir)
+        except NameError:
+            pass
         sys.exit(1)
 
 
