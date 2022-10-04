@@ -2,7 +2,7 @@
 ```console
 usage: regex-filter.py -i INPUT [INPUT ...] -f FILTER -o OUTPUT [-m] [-r] [-h]
 
-Replace matched strings in file content and filenames with specified substitute using regular expressions
+Replace matched strings in file content and file names with specified substitute using regular expressions
 
 required:
   -i INPUT [INPUT ...], --input INPUT [INPUT ...]

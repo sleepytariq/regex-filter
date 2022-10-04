@@ -179,7 +179,7 @@ def clean_files(dir: str, mode: str):
 
 def parse_arguments():
     parser = ArgumentParser(
-        description="Replace matched strings in file content and filenames with specified substitute using regular expressions",
+        description="Replace matched strings in file content and file names with specified substitute using regular expressions",
         add_help=False,
     )
     required = parser.add_argument_group("required")
