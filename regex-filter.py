@@ -13,11 +13,10 @@ import string
 import random
 from argparse import ArgumentParser
 from charset_normalizer import from_path
-from colorama import Fore, init
 
 
 def show_error(message: str):
-    print(f"{Fore.RED}Error:{Fore.RESET} {message}")
+    print(f"[ERROR]: {message}")
 
 
 def load_json(path: str):
@@ -156,14 +155,13 @@ def handle_gzip_content(path: str):
 
 
 def clean_a_file(path: str):
-    rel_path = path.replace(temp_dir, "").lstrip(os.path.sep)
     count = 0
     try:
         enc_type = from_path(path).best().encoding
         with open(path, "r", encoding=enc_type) as f:
             text = f.read()
     except Exception:
-        show_error(f"failed to read {rel_path}")
+        show_error(f"failed to read {path.replace(temp_dir, '').lstrip(os.path.sep)}")
         return
 
     for regex, substitute in filter_list.items():
@@ -173,7 +171,9 @@ def clean_a_file(path: str):
     if count:
         with open(path, "w", encoding=enc_type) as f:
             f.write(text)
-    print(f"{Fore.GREEN if count else Fore.YELLOW}{count}:{Fore.RESET} {rel_path}")
+        print(f"[CHANGED {count}]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
+    else:
+        print(f"[NOT CHANGED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
 
 
 def clean_files(dir: str):
@@ -210,12 +210,10 @@ def rename_a_file(path: str):
             new_path = os.path.join(os.path.dirname(path), new_name)
         os.rename(path, new_path)
         print(
-            f"{path.replace(temp_dir, '').lstrip(os.path.sep)} {Fore.GREEN}-->{Fore.RESET} {new_path.replace(temp_dir, '').lstrip(os.path.sep)}"
+            f"[RENAMED]: {path.replace(temp_dir, '').lstrip(os.path.sep)} => {new_path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
     else:
-        print(
-            f"{Fore.YELLOW}!{Fore.RESET} {path.replace(temp_dir, '').lstrip(os.path.sep)}"
-        )
+        print(f"[NOT RENAMED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
 
 
 def rename_files(dir: str):
@@ -238,7 +236,7 @@ def rename_files(dir: str):
 
 def parse_arguments():
     parser = ArgumentParser(
-        description="Replace matched strings in file content with specified substitute using regular expressions",
+        description="Replace matched strings in file content and filenames with specified substitute using regular expressions",
         add_help=False,
     )
     required = parser.add_argument_group("required")
@@ -283,7 +281,6 @@ def parse_arguments():
 
 def main():
     try:
-        init()
         args = parse_arguments()
 
         if not (args.modify or args.rename):
