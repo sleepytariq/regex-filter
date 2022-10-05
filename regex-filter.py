@@ -65,6 +65,16 @@ def handle_tar(path: str, mode: str):
         temp = path.replace(".tar.gz", "")
         temp = temp.replace(".tgz", "")
         arctype = ":gz"
+    elif path.endswith("bz") or path.endswith("bz2"):
+        temp = path.replace(".tar.bz2", "")
+        temp = temp.replace(".tar.bz", "")
+        temp = temp.replace(".tbz2", "")
+        temp = temp.replace(".tbz", "")
+        arctype = ":bz2"
+    elif path.endswith("xz"):
+        temp = path.replace(".tar.xz", "")
+        temp = temp.replace(".txz", "")
+        arctype = ":xz"
     else:
         temp = path.replace(".tar", "")
         arctype = ""
