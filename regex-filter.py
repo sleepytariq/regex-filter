@@ -45,14 +45,15 @@ def is_gzipfile(path: str):
 def handle_zip(path: str, mode: str):
     temp = path + "_temp"
     os.rename(path, temp)
+    os.makedirs(path)
     try:
         with zipfile.ZipFile(temp, "r") as zf:
-            os.makedirs(path)
             zf.extractall(path)
     except (RuntimeError, zipfile.BadZipfile):
         show_error(
             f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
+        shutil.rmtree(path)
         os.rename(temp, path)
         return
     clean_files(path, mode)
@@ -81,14 +82,15 @@ def handle_tar(path: str, mode: str):
         arctype = ""
     temp = path + "_temp"
     os.rename(path, temp)
+    os.makedirs(path)
     try:
         with tarfile.open(temp, "r" + arctype) as tf:
-            os.makedirs(path)
             tf.extractall(path)
     except tarfile.ExtractError:
         show_error(
             f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
+        shutil.rmtree(path)
         os.rename(temp, path)
         return
     clean_files(path, mode)
