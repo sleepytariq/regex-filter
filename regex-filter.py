@@ -49,7 +49,7 @@ def handle_zip(path: str, mode: str):
         with zipfile.ZipFile(temp, "r") as zf:
             os.makedirs(path)
             zf.extractall(path)
-    except RuntimeError:
+    except (RuntimeError, zipfile.BadZipfile):
         show_error(
             f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
