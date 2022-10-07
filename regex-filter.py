@@ -8,6 +8,7 @@ import re
 import gzip
 import zipfile
 import tarfile
+import py7zr
 import tempfile
 import string
 import random
@@ -49,7 +50,7 @@ def handle_zip(path: str, mode: str):
     try:
         with zipfile.ZipFile(temp, "r") as zf:
             zf.extractall(path)
-    except (RuntimeError, zipfile.BadZipfile):
+    except Exception:
         show_error(
             f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
@@ -63,7 +64,7 @@ def handle_zip(path: str, mode: str):
         for root, dirs, filenames in os.walk(temp):
             for filename in filenames:
                 p = os.path.join(root, filename)
-                zf.write(p, arcname=p.replace(temp, ""))
+                zf.write(p, arcname=p.replace(temp, "").lstrip(os.path.sep))
     shutil.rmtree(temp)
     if mode == "rename":
         rename_file(path)
@@ -86,7 +87,7 @@ def handle_tar(path: str, mode: str):
     try:
         with tarfile.open(temp, "r" + arctype) as tf:
             tf.extractall(path)
-    except tarfile.ExtractError:
+    except Exception:
         show_error(
             f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
         )
@@ -100,7 +101,36 @@ def handle_tar(path: str, mode: str):
         for root, dirs, filenames in os.walk(temp):
             for filename in filenames:
                 p = os.path.join(root, filename)
-                tf.add(p, arcname=p.replace(temp, ""))
+                tf.add(p, arcname=p.replace(temp, "").lstrip(os.path.sep))
+    shutil.rmtree(temp)
+    if mode == "rename":
+        rename_file(path)
+
+
+def handle_7zip(path: str, mode: str):
+    temp = path + "_temp"
+    os.rename(path, temp)
+    os.makedirs(path)
+    try:
+        with py7zr.SevenZipFile(temp, "r") as zf:
+            zf.extractall(path)
+    except Exception:
+        show_error(
+            f"failed to extract {path.replace(temp_dir, '').lstrip(os.path.sep)}"
+        )
+        shutil.rmtree(path)
+        os.rename(temp, path)
+        if mode == "rename":
+            rename_file(path)
+        return
+    clean_files(path, mode)
+    os.remove(temp)
+    os.rename(path, temp)
+    with py7zr.SevenZipFile(path, "w") as zf:
+        for root, dirs, filenames in os.walk(temp):
+            for filename in filenames:
+                p = os.path.join(root, filename)
+                zf.write(p, arcname=p.replace(temp, "").lstrip(os.path.sep))
     shutil.rmtree(temp)
     if mode == "rename":
         rename_file(path)
@@ -113,7 +143,7 @@ def handle_gzip(path: str):
         with gzip.open(temp, "rb") as gzf:
             with open(path, "wb") as f:
                 f.write(gzf.read())
-    except gzip.BadGzipFile:
+    except Exception:
         show_error(f"failed to extract {path.replace(temp_dir, '')}")
         os.rename(temp, path)
         return
@@ -186,6 +216,10 @@ def clean_files(dir: str, mode: str):
 
         if tarfile.is_tarfile(path):
             handle_tar(path, mode)
+            continue
+
+        if py7zr.is_7zfile(path):
+            handle_7zip(path, mode)
             continue
 
         if is_gzipfile(path) and mode == "modify":
