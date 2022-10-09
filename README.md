@@ -1,6 +1,6 @@
 # Usage
 ```console
-usage: regex-filter.py -i INPUT [INPUT ...] -f FILTER -o OUTPUT [-m] [-r] [-h]
+usage: regex_filter.py -i INPUT [INPUT ...] -f FILTER -o OUTPUT [-m] [-r] [-h]
 
 Replace matched strings in file content and file names with specified substitute using regular expressions
 
