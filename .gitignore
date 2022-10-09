@@ -2,3 +2,4 @@
 .DS_Store
 filter.json
 test_files*/
+__pycache__/
