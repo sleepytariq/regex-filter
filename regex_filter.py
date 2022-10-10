@@ -49,6 +49,7 @@ def modify_file(path: str):
 
     if not total_count:
         print(f"[NOT MODIFIED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
+        return
 
     with open(path, "w", encoding=enc_type) as f:
         f.write(text)
