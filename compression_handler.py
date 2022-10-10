@@ -12,6 +12,9 @@ def is_gzipfile(path: str):
 
 
 def is_compressed(path: str):
+    if os.path.isdir(path):
+        return False
+
     return (
         zipfile.is_zipfile(path)
         or tarfile.is_tarfile(path)
