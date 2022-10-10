@@ -20,13 +20,6 @@ optional:
   -h, --help            show this help message and exit
 ```
 
-The json file must be in `REGEX:WORD` format where the keys are the regex and the values are the replacement
-
-## Example
-```json
-{
-	"(\\d{1,3}\\.){3}\\d{1,3}" : "x.x.x.x"
-}
-```
+The json file must be in `REGEX:WORD` format where the keys are the regex and the values are the replacement. See [example](example.json)
 
 A new directory named `REGEX_FILTER` will be created in the given output directory containing the cleaned input
