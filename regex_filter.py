@@ -34,7 +34,6 @@ def get_random_string():
 
 
 def modify_file(path: str):
-    count = 0
     try:
         enc_type = from_path(path).best().encoding
         with open(path, "r", encoding=enc_type) as f:
@@ -43,16 +42,17 @@ def modify_file(path: str):
         show_error(f"failed to read {path.replace(temp_dir, '').lstrip(os.path.sep)}")
         return
 
+    total_count = 0
     for regex, substitute in filter_list.items():
-        count += len(re.findall(regex, text, flags=re.IGNORECASE))
-        text = re.sub(regex, substitute, text, flags=re.IGNORECASE)
+        text, count = re.subn(regex, substitute, text, flags=re.IGNORECASE)
+        total_count += count
 
-    if count:
-        with open(path, "w", encoding=enc_type) as f:
-            f.write(text)
-        print(f"[MODIFIED {count}]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
-    else:
+    if not total_count:
         print(f"[NOT MODIFIED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
+
+    with open(path, "w", encoding=enc_type) as f:
+        f.write(text)
+    print(f"[MODIFIED {total_count}]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
 
 
 def rename_file(path: str):
@@ -60,17 +60,16 @@ def rename_file(path: str):
     for regex, substitute in filter_list.items():
         new_name = re.sub(regex, substitute, new_name, flags=re.IGNORECASE)
 
-    if new_name != name:
-        new_path = os.path.join(os.path.dirname(path), new_name)
-        if os.path.exists(new_path):
-            new_name = get_random_string() + new_name
-            new_path = os.path.join(os.path.dirname(path), new_name)
-        os.rename(path, new_path)
-        print(
-            f"[RENAMED]: {path.replace(temp_dir, '').lstrip(os.path.sep)} => {new_path.replace(temp_dir, '').lstrip(os.path.sep)}"
-        )
-    else:
+    if new_name == name:
         print(f"[NOT RENAMED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
+        return
+
+    new_path = os.path.join(os.path.dirname(path), new_name)
+    if os.path.exists(new_path):
+        new_name = get_random_string() + new_name
+        new_path = os.path.join(os.path.dirname(path), new_name)
+    os.rename(path, new_path)
+    print(f"[RENAMED]: {path.replace(temp_dir, '').lstrip(os.path.sep)} => {new_name}")
 
 
 def clean_files(path: str, mode: str):
@@ -104,7 +103,7 @@ def clean_files(path: str, mode: str):
             rename_file(p)
 
 
-def parse_arguments():
+def get_args():
     parser = ArgumentParser(
         description="Replace matched strings in file content and file names with specified substitute using regular expressions",
         add_help=False,
@@ -151,7 +150,7 @@ def parse_arguments():
 
 def main():
     try:
-        args = parse_arguments()
+        args = get_args()
 
         if not (args.modify or args.rename):
             show_error("use -m and/or -r modifiers")
@@ -165,7 +164,6 @@ def main():
 
         for item in args.input:
             if not os.path.exists(item):
-                show_error(f"{item} not found")
                 continue
 
             if os.path.isdir(item):
@@ -184,9 +182,7 @@ def main():
             clean_files(temp_dir, "rename")
 
         out_dir = os.path.join(args.output, "REGEX_FILTER")
-
-        if os.path.exists(out_dir):
-            shutil.rmtree(out_dir)
+        shutil.rmtree(out_dir, ignore_errors=True)
         shutil.move(temp_dir, out_dir)
     except KeyboardInterrupt:
         try:
