@@ -185,10 +185,7 @@ def main():
         shutil.rmtree(out_dir, ignore_errors=True)
         shutil.move(temp_dir, out_dir)
     except KeyboardInterrupt:
-        try:
-            shutil.rmtree(temp_dir)
-        except NameError:
-            pass
+        shutil.rmtree(temp_dir, ignore_errors=True)
         sys.exit(1)
 
 
