@@ -1,4 +1,9 @@
-# Usage
+## Installation
+1. Clone the repository `git clone https://github.com/illbison/regex-filter` or download as [zip](https://github.com/illbison/regex-filter/archive/refs/heads/main.zip)
+2. Install dependencies `pip install -r requirements.txt`
+3. Run with `python regex_filter.py ...`
+
+## Usage
 ```console
 usage: regex_filter.py -i INPUT [INPUT ...] -f FILTER -o OUTPUT [-m] [-r] [-h]
 
