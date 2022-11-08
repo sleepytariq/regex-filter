@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-import bz2
 import gzip
 import json
-import lzma
 import os
 import random
 import re
@@ -13,126 +11,97 @@ import sys
 import tarfile
 import tempfile
 import zipfile
-from argparse import ArgumentParser
-
 import py7zr
+from argparse import ArgumentParser
 from charset_normalizer import from_path
 
 
-def show_error(message: str):
+def show_error(message: str) -> None:
     print(f"[ERROR]: {message}")
 
 
-def load_json(path: str):
+def load_json(path: str) -> dict[str, str]:
     try:
         with open(path, "r") as f:
             dictionary = json.load(f)
         return dictionary
     except json.JSONDecodeError:
-        show_error("failed to load json file")
+        show_error("failed to parse json file")
         sys.exit(1)
     except FileNotFoundError:
         show_error("json file not found")
         sys.exit(1)
 
 
-def is_gzipfile(path: str):
+def is_gzipfile(path: str) -> bool:
     with open(path, "rb") as f:
         return f.read(2) == b"\x1f\x8b"
 
 
-def is_bzip2file(path: str):
-    with open(path, "rb") as f:
-        return f.read(3) == b"\x42\x5a\x68"
-
-
-def is_lzmafile(path: str):
-    with open(path, "rb") as f:
-        return f.read(5) == b"\xfd\x37\x7a\x58\x5a"
-
-
-def is_compressed(path: str):
+def is_compressed(path: str) -> str | bool:
     if os.path.isdir(path):
         return False
 
-    return (
-        zipfile.is_zipfile(path)
-        or tarfile.is_tarfile(path)
-        or py7zr.is_7zfile(path)
-        or is_gzipfile(path)
-        or is_bzip2file(path)
-        or is_lzmafile(path)
-    )
+    if zipfile.is_zipfile(path):
+        return "zip"
 
-
-def decompress(path: str):
-    temp = path + "_temp"
-    try:
-        if zipfile.is_zipfile(path):
-            os.makedirs(temp)
-            with zipfile.ZipFile(path, "r") as zf:
-                zf.extractall(temp)
-            arctype = "zip"
-
-        elif tarfile.is_tarfile(path):
-            if path.endswith("gz"):
-                tartype = ":gz"
-            elif path.endswith("bz") or path.endswith("bz2"):
-                tartype = ":bz2"
-            elif path.endswith("xz"):
-                tartype = ":xz"
-            else:
-                tartype = ""
-            with tarfile.open(path, "r" + tartype) as tf:
-                tf.extractall(temp)
-            arctype = "tar" + tartype
-
-        elif py7zr.is_7zfile(path):
-            with py7zr.SevenZipFile(path, "r") as zf:
-                zf.extractall(temp)
-            arctype = "7zip"
-
-        elif is_gzipfile(path):
-            with gzip.open(path, "rb") as gzf:
-                with open(temp, "wb") as f:
-                    f.write(gzf.read())
-            arctype = "gzip"
-
-        elif is_bzip2file(path):
-            with bz2.open(path, "rb") as bzf:
-                with open(temp, "wb") as f:
-                    f.write(bzf.read())
-            arctype = "bzip2"
-
-        elif is_lzmafile(path):
-            with lzma.open(path, "rb") as lf:
-                with open(temp, "wb") as f:
-                    f.write(lf.read())
-            arctype = "lzma"
-
+    if tarfile.is_tarfile(path):
+        if path.endswith("gz"):
+            tartype = ":gz"
+        elif path.endswith("bz") or path.endswith("bz2"):
+            tartype = ":bz2"
+        elif path.endswith("xz"):
+            tartype = ":xz"
         else:
-            return
-        os.remove(path)
-        os.rename(temp, path)
-        return arctype
-    except Exception:
-        try:
-            if os.path.isdir(temp):
-                shutil.rmtree(temp)
-            else:
-                os.remove(temp)
-        except FileNotFoundError:
-            pass
+            tartype = ""
+        return "tar" + tartype
+
+    if py7zr.is_7zfile(path):
+        return "7zip"
+
+    if is_gzipfile(path):
+        return "gzip"
+
+    return False
 
 
-def compress(path: str, arctype: str):
+def decompress(path: str, arctype: str) -> None:
+    if arctype != "gzip":
+        with tempfile.TemporaryDirectory() as td:
+            if arctype == "zip":
+                with zipfile.ZipFile(path, "r") as zf:
+                    zf.extractall(td)
+
+            elif arctype.startswith("tar"):
+                tartype = arctype.replace("tar", "")
+                with tarfile.open(path, "r" + tartype) as tf:
+                    tf.extractall(td)
+
+            elif arctype == "7zip":
+                with py7zr.SevenZipFile(path, "r") as zf:
+                    zf.extractall(td)
+
+            os.remove(path)
+            shutil.copytree(td, path)
+        return
+
+    with tempfile.TemporaryFile("wb+") as tf:
+        with gzip.open(path, "rb") as gzf:
+            tf.write(gzf.read())
+        tf.seek(0)
+        with open(path, "wb") as f:
+            f.write(tf.read())
+
+
+def compress(path: str, arctype: str) -> None:
     temp = path + "_temp"
+
     if arctype == "zip":
         with zipfile.ZipFile(temp, "w", zipfile.ZIP_DEFLATED) as zf:
             for root, dirs, filenames in os.walk(path):
                 for filename in filenames:
                     p = os.path.join(root, filename)
-                    zf.write(p, arcname=p.replace(path, "").lstrip(os.path.sep))
+                    zf.write(p, arcname=p.replace(path + os.path.sep, ""))
 
     elif arctype.startswith("tar"):
         tartype = arctype.replace("tar", "")
@@ -140,29 +109,19 @@ def compress(path: str, arctype: str):
             for root, dirs, filenames in os.walk(path):
                 for filename in filenames:
                     p = os.path.join(root, filename)
-                    tf.add(p, arcname=p.replace(path, "").lstrip(os.path.sep))
+                    tf.add(p, arcname=p.replace(path + os.path.sep, ""))
 
     elif arctype == "7zip":
         with py7zr.SevenZipFile(temp, "w") as zf:
             for root, dirs, filenames in os.walk(path):
                 for filename in filenames:
                     p = os.path.join(root, filename)
-                    zf.write(p, arcname=p.replace(path, "").lstrip(os.path.sep))
+                    zf.write(p, arcname=p.replace(path + os.path.sep, ""))
 
     elif arctype == "gzip":
         with open(path, "rb") as f:
             with gzip.open(temp, "wb") as gzf:
                 gzf.write(f.read())
-
-    elif arctype == "bzip2":
-        with open(path, "rb") as f:
-            with bz2.open(temp, "wb") as bzf:
-                bzf.write(f.read())
-
-    elif arctype == "lzma":
-        with open(path, "rb") as f:
-            with lzma.open(temp, "wb") as lf:
-                lf.write(f.read())
 
     else:
         return
@@ -174,6 +133,7 @@ def compress(path: str, arctype: str):
             os.remove(path)
     except FileNotFoundError:
         pass
+
     os.rename(temp, path)
 
 
@@ -187,31 +147,31 @@ def modify_file(path: str):
         enc_type = from_path(path).best().encoding
         with open(path, "r", encoding=enc_type) as f:
             text = f.read()
-    except Exception:
-        show_error(f"failed to read {path.replace(temp_dir, '').lstrip(os.path.sep)}")
+    except Exception as e:
+        show_error(f"failed to read {path.replace(temp_dir_name + os.path.sep, '')}")
         return
 
     total_count = 0
-    for regex, substitute in filter_list.items():
-        text, count = re.subn(regex, substitute, text, flags=re.IGNORECASE)
+    for regex, sub in filter_list.items():
+        text, count = re.subn(regex, sub, text, flags=re.IGNORECASE)
         total_count += count
 
     if not total_count:
-        print(f"[NOT MODIFIED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
+        print(f"[NOT MODIFIED]: {path.replace(temp_dir_name + os.path.sep, '')}")
         return
 
     with open(path, "w", encoding=enc_type) as f:
         f.write(text)
-    print(f"[MODIFIED {total_count}]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
+    print(f"[MODIFIED {total_count}]: {path.replace(temp_dir_name + os.path.sep, '')}")
 
 
 def rename_file(path: str):
-    new_name = name = os.path.basename(path)
-    for regex, substitute in filter_list.items():
-        new_name = re.sub(regex, substitute, new_name, flags=re.IGNORECASE)
+    new_name = old_name = os.path.basename(path)
+    for regex, sub in filter_list.items():
+        new_name = re.sub(regex, sub, new_name, flags=re.IGNORECASE)
 
-    if new_name == name:
-        print(f"[NOT RENAMED]: {path.replace(temp_dir, '').lstrip(os.path.sep)}")
+    if new_name == old_name:
+        print(f"[NOT RENAMED]: {path.replace(temp_dir_name + os.path.sep, '')}")
         return
 
     new_path = os.path.join(os.path.dirname(path), new_name)
@@ -219,27 +179,28 @@ def rename_file(path: str):
         new_name = get_random_string() + new_name
         new_path = os.path.join(os.path.dirname(path), new_name)
     os.rename(path, new_path)
-    print(f"[RENAMED]: {path.replace(temp_dir, '').lstrip(os.path.sep)} => {new_name}")
+    print(f"[RENAMED]: {path.replace(temp_dir_name + os.path.sep, '')} => {new_name}")
 
 
 def clean_files(path: str, mode: str):
     for p in [os.path.join(path, item) for item in os.listdir(path)]:
+
         if os.path.isdir(p):
             clean_files(p, mode)
             if mode == "rename":
                 rename_file(p)
             continue
 
-        if is_compressed(p):
-            arctype = decompress(p)
-            if arctype:
-                if os.path.isdir(p):
-                    clean_files(p, mode)
-                elif mode == "modify":
-                    modify_file(p)
-                compress(p, arctype)
-            else:
-                show_error(f"failed to extract {p.replace(temp_dir, '').lstrip(os.path.sep)}")
+        if arctype := is_compressed(p):
+            try:
+                decompress(p, arctype)
+            except Exception:
+                show_error(f"failed to extract {p.replace(temp_dir_name + os.path.sep, '')}")
+            if os.path.isdir(p):
+                clean_files(p, mode)
+            elif mode == "modify":
+                modify_file(p)
+            compress(p, arctype)
             if mode == "rename":
                 rename_file(p)
             continue
@@ -268,27 +229,17 @@ def get_args():
         required=True,
     )
     required.add_argument(
-        "-f",
-        "--filter",
-        type=str,
-        help="path to a json file in REGEX:WORD format",
-        required=True,
+        "-f", "--filter", type=str, help="path to a json file in REGEX:WORD format", required=True
     )
     required.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        help="path to output directory",
-        required=True,
+        "-o", "--output", type=str, help="path to output directory", required=True
     )
     modifiers.add_argument(
-        "-m",
-        "--modify",
-        action="store_true",
-        help="use filter to modify content of files",
+        "-m", "--modify", action="store_true", help="use filter to modify content of files"
     )
     modifiers.add_argument("-r", "--rename", action="store_true", help="use filter to rename files")
     optional.add_argument("-h", "--help", action="help", help="show this help message and exit")
+
     return parser.parse_args()
 
 
@@ -303,33 +254,34 @@ def main():
         global filter_list
         filter_list = load_json(args.filter)
 
-        global temp_dir
-        temp_dir = tempfile.mkdtemp()
+        with tempfile.TemporaryDirectory() as td:
+            global temp_dir_name
+            temp_dir_name = td
 
-        for item in args.input:
-            if not os.path.exists(item):
-                continue
+            for item in args.input:
+                if not os.path.exists(item):
+                    show_error(f"{item} does not exist")
+                    sys.exit(1)
 
-            if os.path.isdir(item):
-                item = item.rstrip(os.path.sep)
-                shutil.copytree(item, os.path.join(temp_dir, os.path.basename(item)))
-            else:
-                shutil.copyfile(item, os.path.join(temp_dir, os.path.basename(item)))
+                if os.path.isdir(item):
+                    item = item.rstrip(os.path.sep)
+                    shutil.copytree(item, os.path.join(temp_dir_name, os.path.basename(item)))
+                else:
+                    shutil.copyfile(item, os.path.join(temp_dir_name, os.path.basename(item)))
 
-        if args.modify:
-            clean_files(temp_dir, "modify")
+            if args.modify:
+                clean_files(temp_dir_name, "modify")
 
-        if args.modify and args.rename:
-            print("-" * os.get_terminal_size().columns)
+            if args.modify and args.rename:
+                print("-" * os.get_terminal_size().columns)
 
-        if args.rename:
-            clean_files(temp_dir, "rename")
+            if args.rename:
+                clean_files(temp_dir_name, "rename")
 
-        out_dir = os.path.join(args.output, "REGEX_FILTER")
-        shutil.rmtree(out_dir, ignore_errors=True)
-        shutil.move(temp_dir, out_dir)
+            out_dir = os.path.join(args.output, "REGEX_FILTER")
+            shutil.rmtree(out_dir, ignore_errors=True)
+            shutil.move(temp_dir_name, out_dir)
     except KeyboardInterrupt:
-        shutil.rmtree(temp_dir, ignore_errors=True)
         sys.exit(1)
 
 
