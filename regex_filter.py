@@ -122,28 +122,28 @@ def get_args():
         description="Replace matched strings in file content and file names with specified substitute using regular expressions",
         add_help=False,
     )
-    required = parser.add_argument_group("required")
-    modifiers = parser.add_argument_group("modifiers")
-    optional = parser.add_argument_group("optional")
+    required = parser.add_argument_group("Required")
+    modifiers = parser.add_argument_group("Modifiers")
+    optional = parser.add_argument_group("Optional")
     required.add_argument(
         "-i",
         "--input",
         type=str,
         nargs="+",
-        help="path to files or directories containing files",
+        help="Path to files or directories containing files",
         required=True,
     )
     required.add_argument(
-        "-f", "--filter", type=str, help="path to a json file in REGEX:WORD format", required=True
+        "-f", "--filter", type=str, help="Path to a json file in REGEX:WORD format", required=True
     )
     required.add_argument(
-        "-o", "--output", type=str, help="path to output directory", required=True
+        "-o", "--output", type=str, help="Path to output directory", required=True
     )
     modifiers.add_argument(
-        "-m", "--modify", action="store_true", help="use filter to modify content of files"
+        "-m", "--modify", action="store_true", help="Use filter to modify content of files"
     )
-    modifiers.add_argument("-r", "--rename", action="store_true", help="use filter to rename files")
-    optional.add_argument("-h", "--help", action="help", help="show this help message and exit")
+    modifiers.add_argument("-r", "--rename", action="store_true", help="Use filter to rename files")
+    optional.add_argument("-h", "--help", action="help", help="Show this help message and exit")
 
     return parser.parse_args()
 
