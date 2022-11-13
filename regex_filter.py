@@ -69,12 +69,12 @@ def rename_file(path: str) -> None:
         new_name = get_random_string() + new_name
         new_path = os.path.join(os.path.dirname(path), new_name)
     os.rename(path, new_path)
-    print(f"[RENAMED]: {path.replace(temp_dir_name + os.path.sep, '')} => {new_name}")
+    print(f"[RENAMED]: {path.replace(temp_dir_name + os.path.sep, '')} -> {new_name}")
 
 
 def decompress(path: str) -> None:
     with tempfile.TemporaryDirectory() as td:
-        subprocess.call([sevenzip, "x", path, f"-o{td}"], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        subprocess.call(f"{sevenzip} x -y '{path}' -o'{td}'", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         os.remove(path)
         shutil.copytree(td, path)
 
@@ -82,7 +82,7 @@ def decompress(path: str) -> None:
 def compress(path: str) -> None:
     temp = path + "_temp"
     os.rename(path, temp)
-    subprocess.call([sevenzip, "a", path, os.path.join(temp, "*")], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    subprocess.call(f"{sevenzip} a -y '{path}' '{os.path.join(temp, '*')}'", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     shutil.rmtree(temp)
 
 
@@ -97,18 +97,18 @@ def clean_files(path: str, mode: str) -> None:
             continue
 
         if sevenzip:
-            code, output = subprocess.getstatusoutput(f"{sevenzip} t -p0 {file}")
-            if code != 0:
-                if "Type =" in output:
-                    print(f"[ERROR]: failed to extract {file.replace(temp_dir_name + os.path.sep, '')}")
-                    continue
-            else:
+            code, output = subprocess.getstatusoutput(f"{sevenzip} t -y -p0 '{file}'")
+            if code == 0:
                 decompress(file)
                 clean_files(file, mode)
                 compress(file)
                 if mode == "rename":
                     rename_file(file)
                 continue
+            else:
+                if "Type =" in output:
+                    print(f"[ERROR]: failed to extract {file.replace(temp_dir_name + os.path.sep, '')}")
+                    continue
 
         if mode == "modify":
             modify_file(file)
@@ -160,14 +160,14 @@ def main():
         filter_list = load_json(args.filter)
 
         global sevenzip
-        sevenzip = None
-        for bin in ["7z", "7za", "7zz"]:
+        sevenzip = ""
+        for bin in ["7z", "7za", "7zr", "7zz"]:
             if shutil.which(bin):
                 sevenzip = bin
                 break
 
         if not sevenzip:
-            print("[INFO]: Could not find 7zip in PATH, compressed files will not be cleaned")
+            print("Could not find 7zip in PATH, compressed files will not be cleaned")
 
         with tempfile.TemporaryDirectory() as td:
             global temp_dir_name
@@ -185,12 +185,11 @@ def main():
                     shutil.copyfile(item, os.path.join(temp_dir_name, os.path.basename(item)))
 
             if args.modify:
+                print("MODIFY".center(os.get_terminal_size().columns, "-"))
                 clean_files(temp_dir_name, "modify")
 
-            if args.modify and args.rename:
-                print("-" * os.get_terminal_size().columns)
-
             if args.rename:
+                print("RENAME".center(os.get_terminal_size().columns, "-"))
                 clean_files(temp_dir_name, "rename")
 
             out_dir = os.path.join(args.output, "REGEX_FILTER")
