@@ -1,2 +1,1 @@
 charset-normalizer
-py7zr
