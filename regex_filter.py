@@ -20,10 +20,10 @@ def load_json(path: str) -> dict[str, str]:
             dictionary = json.load(f)
         return dictionary
     except json.JSONDecodeError:
-        print("[ERROR]: failed to parse json file")
+        print("[ERROR]: Failed to parse JSON file")
         sys.exit(1)
     except FileNotFoundError:
-        print("[ERROR]: json file not found")
+        print("[ERROR]: JSON file not found")
         sys.exit(1)
 
 
@@ -38,7 +38,7 @@ def modify_file(path: str) -> None:
         with open(path, "r", encoding=enc_type) as f:
             text = f.read()
     except Exception:
-        print(f"[ERROR]: failed to read {path.replace(temp_dir_name + os.path.sep, '')}")
+        print(f"[ERROR]: Failed to read {path.replace(temp_dir_name + os.path.sep, '')}")
         return
 
     total_count = 0
@@ -107,7 +107,7 @@ def clean_files(path: str, mode: str) -> None:
                 continue
             else:
                 if "Type =" in output:
-                    print(f"[ERROR]: failed to extract {file.replace(temp_dir_name + os.path.sep, '')}")
+                    print(f"[ERROR]: Failed to extract {file.replace(temp_dir_name + os.path.sep, '')}")
                     continue
 
         if mode == "modify":
@@ -153,7 +153,7 @@ def main():
         args = get_args()
 
         if not (args.modify or args.rename):
-            print("[ERROR]: use -m and/or -r modifiers")
+            print("[ERROR]: Use -m and/or -r modifiers")
             sys.exit(1)
 
         global filter_list
