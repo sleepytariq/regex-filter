@@ -77,7 +77,7 @@ def rename_file(path: str) -> None:
 def decompress(path: str) -> None:
     with tempfile.TemporaryDirectory() as td:
         subprocess.call(
-            f"{sevenzip} x -y '{path}' -o'{td}'",
+            f'{sevenzip} x -y "{path}" -o"{td}"',
             shell=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -90,7 +90,7 @@ def compress(path: str) -> None:
     temp = path + "_temp"
     os.rename(path, temp)
     subprocess.call(
-        f"{sevenzip} a -y '{path}' '{os.path.join(temp, '*')}'",
+        f'{sevenzip} a -y "{path}" "{os.path.join(temp, "*")}"',
         shell=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -109,7 +109,7 @@ def clean_files(path: str, mode: str) -> None:
             continue
 
         if sevenzip:
-            code, output = subprocess.getstatusoutput(f"{sevenzip} t -y -p0 '{file}'")
+            code, output = subprocess.getstatusoutput(f'{sevenzip} t -y -p0 "{file}"')
             if code == 0:
                 decompress(file)
                 clean_files(file, mode)
