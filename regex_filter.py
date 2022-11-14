@@ -38,7 +38,9 @@ def modify_file(path: str) -> None:
         with open(path, "r", encoding=enc_type) as f:
             text = f.read()
     except Exception:
-        print(f"[ERROR]: Failed to read {path.replace(temp_dir_name + os.path.sep, '')}")
+        print(
+            f"[ERROR]: Failed to read {path.replace(temp_dir_name + os.path.sep, '')}"
+        )
         return
 
     total_count = 0
@@ -74,7 +76,12 @@ def rename_file(path: str) -> None:
 
 def decompress(path: str) -> None:
     with tempfile.TemporaryDirectory() as td:
-        subprocess.call(f"{sevenzip} x -y '{path}' -o'{td}'", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.call(
+            f"{sevenzip} x -y '{path}' -o'{td}'",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         os.remove(path)
         shutil.copytree(td, path)
 
@@ -82,7 +89,12 @@ def decompress(path: str) -> None:
 def compress(path: str) -> None:
     temp = path + "_temp"
     os.rename(path, temp)
-    subprocess.call(f"{sevenzip} a -y '{path}' '{os.path.join(temp, '*')}'", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.call(
+        f"{sevenzip} a -y '{path}' '{os.path.join(temp, '*')}'",
+        shell=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     shutil.rmtree(temp)
 
 
@@ -107,7 +119,9 @@ def clean_files(path: str, mode: str) -> None:
                 continue
             else:
                 if "Type =" in output:
-                    print(f"[ERROR]: Failed to extract {file.replace(temp_dir_name + os.path.sep, '')}")
+                    print(
+                        f"[ERROR]: Failed to extract {file.replace(temp_dir_name + os.path.sep, '')}"
+                    )
                     continue
 
         if mode == "modify":
@@ -134,16 +148,27 @@ def get_args():
         required=True,
     )
     required.add_argument(
-        "-f", "--filter", type=str, help="Path to a json file in REGEX:WORD format", required=True
+        "-f",
+        "--filter",
+        type=str,
+        help="Path to a json file in REGEX:WORD format",
+        required=True,
     )
     required.add_argument(
         "-o", "--output", type=str, help="Path to output directory", required=True
     )
     modifiers.add_argument(
-        "-m", "--modify", action="store_true", help="Use filter to modify content of files"
+        "-m",
+        "--modify",
+        action="store_true",
+        help="Use filter to modify content of files",
     )
-    modifiers.add_argument("-r", "--rename", action="store_true", help="Use filter to rename files")
-    optional.add_argument("-h", "--help", action="help", help="Show this help message and exit")
+    modifiers.add_argument(
+        "-r", "--rename", action="store_true", help="Use filter to rename files"
+    )
+    optional.add_argument(
+        "-h", "--help", action="help", help="Show this help message and exit"
+    )
 
     return parser.parse_args()
 
@@ -180,9 +205,13 @@ def main():
 
                 if os.path.isdir(item):
                     item = item.rstrip(os.path.sep)
-                    shutil.copytree(item, os.path.join(temp_dir_name, os.path.basename(item)))
+                    shutil.copytree(
+                        item, os.path.join(temp_dir_name, os.path.basename(item))
+                    )
                 else:
-                    shutil.copyfile(item, os.path.join(temp_dir_name, os.path.basename(item)))
+                    shutil.copyfile(
+                        item, os.path.join(temp_dir_name, os.path.basename(item))
+                    )
 
             if args.modify:
                 print("MODIFY".center(os.get_terminal_size().columns, "-"))
