@@ -174,6 +174,47 @@ def get_args():
     return parser.parse_args()
 
 
+def copy_to_temp(files: list[str]) -> None:
+    for file in files:
+        try:
+            if os.path.isdir(file):
+                shutil.copytree(file, os.path.join(temp_dir, shutil._basename(file)))
+            else:
+                shutil.copyfile(file, os.path.join(temp_dir, shutil._basename(file)))
+        except FileNotFoundError:
+            print(f"Error: {file} does not exist")
+            sys.exit(1)
+        except Exception:
+            if os.path.isdir(file):
+                print(f"Error: Failed to copy all of {file} to a temporary directory")
+            else:
+                print(f"Error: Failed to copy {file} to a temporary directory")
+
+
+def copy_to_output(output: str) -> None:
+    out_dir = os.path.join(output, "REGEX_FILTER")
+    shutil.rmtree(out_dir, ignore_errors=True)
+    try:
+        shutil.copytree(temp_dir, out_dir)
+    except Exception:
+        print("Error: Unable to write to output directory")
+
+
+def get_7z() -> str:
+    sevenzip = ""
+    for bin in ["7z", "7za", "7zr", "7zz"]:
+        if shutil.which(bin):
+            sevenzip = bin
+            break
+
+    if not sevenzip:
+        print(
+            "Error: Unable to find 7zip in PATH, compressed files will not be cleaned"
+        )
+
+    return sevenzip
+
+
 def main():
     try:
         args = get_args()
@@ -186,42 +227,11 @@ def main():
         filter = load_filter(args.filter)
 
         global sevenzip
-        sevenzip = ""
-        for bin in ["7z", "7za", "7zr", "7zz"]:
-            if shutil.which(bin):
-                sevenzip = bin
-                break
-
-        if not sevenzip:
-            print(
-                "Error: Unable to find 7zip in PATH, compressed files will not be cleaned"
-            )
+        sevenzip = get_7z()
 
         global temp_dir
         with tempfile.TemporaryDirectory() as temp_dir:
-
-            for item in args.input:
-                try:
-                    if os.path.isdir(item):
-                        shutil.copytree(
-                            item,
-                            os.path.join(temp_dir, shutil._basename(item)),
-                        )
-                    else:
-                        shutil.copyfile(
-                            item,
-                            os.path.join(temp_dir, shutil._basename(item)),
-                        )
-                except FileNotFoundError:
-                    print(f"Error: {item} does not exist")
-                    sys.exit(1)
-                except Exception:
-                    if os.path.isdir(item):
-                        print(
-                            f"Error: Failed to copy all of {item} to a temporary directory"
-                        )
-                    else:
-                        print(f"Error: Failed to copy {item} to a temporary directory")
+            copy_to_temp(args.input)
 
             width = os.get_terminal_size().columns
 
@@ -236,12 +246,8 @@ def main():
                 clean_files(temp_dir, "rename")
                 print("-" * width)
 
-            out_dir = os.path.join(args.output, "REGEX_FILTER")
-            shutil.rmtree(out_dir, ignore_errors=True)
-            try:
-                shutil.copytree(temp_dir, out_dir)
-            except Exception:
-                print("Error: Unable to write to output directory")
+            copy_to_output(args.output)
+
     except KeyboardInterrupt:
         sys.exit(1)
 
