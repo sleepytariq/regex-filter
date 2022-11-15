@@ -14,11 +14,11 @@ from argparse import ArgumentParser
 from charset_normalizer import from_path
 
 
-def load_json(path: str) -> dict[str, str]:
+def load_filter(path: str) -> dict[str, str]:
     try:
         with open(path, "r") as f:
-            dictionary = json.load(f)
-        return dictionary
+            filter = json.load(f)
+        return filter
     except json.JSONDecodeError:
         print("Error: Failed to parse filter")
         sys.exit(1)
@@ -41,31 +41,31 @@ def modify_file(path: str) -> None:
         with open(path, "r", encoding=enc_type) as f:
             text = f.read()
     except Exception:
-        print(f"Error: Failed to read {path.replace(temp_dir_name + os.path.sep, '')}")
+        print(f"Error: Failed to read {path.replace(temp_dir + os.path.sep, '')}")
         return
 
     total_count = 0
-    for regex, sub in filter_list.items():
+    for regex, sub in filter.items():
         text, count = re.subn(regex, sub, text, flags=re.IGNORECASE)
         total_count += count
 
     if not total_count:
-        print(f"Not Modified: {path.replace(temp_dir_name + os.path.sep, '')}")
+        print(f"Not Modified: {path.replace(temp_dir + os.path.sep, '')}")
         return
 
     with open(path, "w", encoding=enc_type) as f:
         f.write(text)
 
-    print(f"Modified ({total_count}): {path.replace(temp_dir_name + os.path.sep, '')}")
+    print(f"Modified ({total_count}): {path.replace(temp_dir + os.path.sep, '')}")
 
 
 def rename_file(path: str) -> None:
     new_name = current_name = os.path.basename(path)
-    for regex, sub in filter_list.items():
+    for regex, sub in filter.items():
         new_name = re.sub(regex, sub, new_name, flags=re.IGNORECASE)
 
     if new_name == current_name:
-        print(f"Not Renamed: {path.replace(temp_dir_name + os.path.sep, '')}")
+        print(f"Not Renamed: {path.replace(temp_dir + os.path.sep, '')}")
         return
 
     new_path = os.path.join(os.path.dirname(path), new_name)
@@ -73,7 +73,7 @@ def rename_file(path: str) -> None:
         new_name = get_random_string() + new_name
         new_path = os.path.join(os.path.dirname(path), new_name)
     os.rename(path, new_path)
-    print(f"Renamed: {path.replace(temp_dir_name + os.path.sep, '')} -> {new_name}")
+    print(f"Renamed: {path.replace(temp_dir + os.path.sep, '')} -> {new_name}")
 
 
 def decompress(path: str) -> None:
@@ -103,7 +103,6 @@ def compress(path: str) -> None:
 def clean_files(path: str, mode: str) -> None:
     files = [os.path.join(path, item) for item in os.listdir(path)]
     for file in files:
-
         if os.path.isdir(file):
             clean_files(file, mode)
             if mode == "rename":
@@ -122,7 +121,7 @@ def clean_files(path: str, mode: str) -> None:
             else:
                 if "Type =" in output:
                     print(
-                        f"Error: Failed to extract {file.replace(temp_dir_name + os.path.sep, '')}"
+                        f"Error: Failed to extract {file.replace(temp_dir + os.path.sep, '')}"
                     )
                     continue
 
@@ -183,8 +182,8 @@ def main():
             print("Error: Use -m and/or -r modifiers")
             sys.exit(1)
 
-        global filter_list
-        filter_list = load_json(args.filter)
+        global filter
+        filter = load_filter(args.filter)
 
         global sevenzip
         sevenzip = ""
@@ -198,21 +197,20 @@ def main():
                 "Error: Unable to find 7zip in PATH, compressed files will not be cleaned"
             )
 
-        with tempfile.TemporaryDirectory() as td:
-            global temp_dir_name
-            temp_dir_name = td
+        global temp_dir
+        with tempfile.TemporaryDirectory() as temp_dir:
 
             for item in args.input:
                 try:
                     if os.path.isdir(item):
                         shutil.copytree(
                             item,
-                            os.path.join(temp_dir_name, shutil._basename(item)),
+                            os.path.join(temp_dir, shutil._basename(item)),
                         )
                     else:
                         shutil.copyfile(
                             item,
-                            os.path.join(temp_dir_name, shutil._basename(item)),
+                            os.path.join(temp_dir, shutil._basename(item)),
                         )
                 except FileNotFoundError:
                     print(f"Error: {item} does not exist")
@@ -229,19 +227,19 @@ def main():
 
             if args.modify:
                 print("MODIFY".center(width, "-"))
-                clean_files(temp_dir_name, "modify")
+                clean_files(temp_dir, "modify")
                 if not args.rename:
                     print("-" * width)
 
             if args.rename:
                 print("RENAME".center(width, "-"))
-                clean_files(temp_dir_name, "rename")
+                clean_files(temp_dir, "rename")
                 print("-" * width)
 
             out_dir = os.path.join(args.output, "REGEX_FILTER")
             shutil.rmtree(out_dir, ignore_errors=True)
             try:
-                shutil.copytree(temp_dir_name, out_dir)
+                shutil.copytree(temp_dir, out_dir)
             except Exception:
                 print("Error: Unable to write to output directory")
     except KeyboardInterrupt:
