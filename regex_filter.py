@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import json
 import os
 import random
@@ -9,9 +10,8 @@ import string
 import subprocess
 import sys
 import tempfile
-from argparse import ArgumentParser
 
-from charset_normalizer import from_path
+import charset_normalizer
 
 
 def load_filter(path: str) -> dict[str, str]:
@@ -37,7 +37,7 @@ def get_random_string() -> str:
 
 def modify_file(path: str) -> None:
     try:
-        enc_type = from_path(path).best().encoding
+        enc_type = charset_normalizer.from_path(path).best().encoding
         with open(path, "r", encoding=enc_type) as f:
             text = f.read()
     except Exception:
@@ -132,8 +132,8 @@ def clean_files(path: str, mode: str) -> None:
             rename_file(file)
 
 
-def get_args():
-    parser = ArgumentParser(
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
         description="Replace matched strings in file content and file names with specified substitute using regular expressions",
         add_help=False,
     )
@@ -200,7 +200,7 @@ def copy_to_output(output: str) -> None:
         print("Error: Unable to write to output directory")
 
 
-def get_7z() -> str:
+def get_sevenzip() -> str:
     sevenzip = ""
     for bin in ["7z", "7za", "7zr", "7zz"]:
         if shutil.which(bin):
@@ -215,7 +215,7 @@ def get_7z() -> str:
     return sevenzip
 
 
-def main():
+def main() -> None:
     try:
         args = get_args()
 
@@ -227,7 +227,7 @@ def main():
         filter = load_filter(args.filter)
 
         global sevenzip
-        sevenzip = get_7z()
+        sevenzip = get_sevenzip()
 
         global temp_dir
         with tempfile.TemporaryDirectory() as temp_dir:
