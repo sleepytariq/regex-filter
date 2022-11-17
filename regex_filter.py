@@ -23,7 +23,7 @@ def load_filter(path: str) -> dict[str, str]:
         print("Error: Failed to parse filter")
         sys.exit(1)
     except FileNotFoundError:
-        print("Error: filter does not exist")
+        print("Error: Filter does not exist")
         sys.exit(1)
     except Exception:
         print("Error: Failed to read filter")
