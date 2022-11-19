@@ -16,8 +16,8 @@ import charset_normalizer
 
 def load_filter(path: str) -> dict[str, str]:
     try:
-        with open(path, "r") as f:
-            filter = json.load(f)
+        with open(path, "r") as file:
+            filter = json.load(file)
         return filter
     except json.JSONDecodeError:
         print("Error: Failed to parse filter")
@@ -37,9 +37,9 @@ def get_random_string() -> str:
 
 def modify_file(path: str) -> None:
     try:
-        enc_type = charset_normalizer.from_path(path).best().encoding
-        with open(path, "r", encoding=enc_type) as f:
-            text = f.read()
+        data = charset_normalizer.from_path(path).best()
+        text = str(data)
+        encoding = data.encoding
     except Exception:
         print(f"Error: Failed to read {path.replace(temp_dir + os.path.sep, '')}")
         return
@@ -53,14 +53,15 @@ def modify_file(path: str) -> None:
         print(f"Not Modified: {path.replace(temp_dir + os.path.sep, '')}")
         return
 
-    with open(path, "w", encoding=enc_type) as f:
-        f.write(text)
+    with open(path, "w", encoding=encoding) as file:
+        file.write(text)
 
     print(f"Modified ({total_count}): {path.replace(temp_dir + os.path.sep, '')}")
 
 
 def rename_file(path: str) -> None:
     new_name = current_name = os.path.basename(path)
+
     for regex, sub in filter.items():
         new_name = re.sub(regex, sub, new_name, flags=re.IGNORECASE)
 
@@ -69,10 +70,13 @@ def rename_file(path: str) -> None:
         return
 
     new_path = os.path.join(os.path.dirname(path), new_name)
+
     if os.path.exists(new_path):
         new_name = get_random_string() + new_name
         new_path = os.path.join(os.path.dirname(path), new_name)
+
     os.rename(path, new_path)
+
     print(f"Renamed: {path.replace(temp_dir + os.path.sep, '')} -> {new_name}")
 
 
