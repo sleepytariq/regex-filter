@@ -196,10 +196,11 @@ def copy_to_temp(files: list[str]) -> None:
 
 
 def copy_to_output(output: str) -> None:
-    out_dir = os.path.join(output, "REGEX_FILTER")
-    shutil.rmtree(out_dir, ignore_errors=True)
     try:
+        out_dir = os.path.join(output, "REGEX_FILTER")
+        shutil.rmtree(out_dir, ignore_errors=True)
         shutil.copytree(temp_dir, out_dir)
+        print(f"Cleaned input is saved to {out_dir}")
     except Exception:
         print("Error: Unable to write to output directory")
 
