@@ -37,9 +37,9 @@ def get_random_string() -> str:
 
 def modify_file(path: str) -> None:
     try:
-        data = charset_normalizer.from_path(path).best()
-        text = str(data)
-        encoding = data.encoding
+        encoding = charset_normalizer.from_path(path).best().encoding
+        with open(path, "r", encoding=encoding) as file:
+            text = file.read()
     except Exception:
         print(f"Error: Failed to read {path.replace(temp_dir + os.path.sep, '')}")
         return
