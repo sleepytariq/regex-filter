@@ -35,6 +35,25 @@ def get_random_string() -> str:
     return "".join([random.choice(chars) for _ in range(5)]) + "_"
 
 
+def log_changes(path: str, text: str, log_file: str) -> None:
+    modifications = {}
+
+    for regex in filter:
+        matches = []
+        for match in re.finditer(regex, text, flags=re.IGNORECASE):
+            match_string = match.group()
+            if match_string and match_string not in matches:
+                matches.append(match_string)
+
+        if matches:
+            modifications[regex] = matches
+
+    if modifications:
+        with open(os.path.join(temp_dir, log_file), "a") as file:
+            file.write(f"File: {path.replace(temp_dir + os.path.sep, '')}\n")
+            file.write(f"Modifications: \n{json.dumps(modifications, indent=4)}\n\n\n")
+
+
 def modify_file(path: str) -> None:
     try:
         encoding = charset_normalizer.from_path(path).best().encoding
@@ -43,6 +62,9 @@ def modify_file(path: str) -> None:
     except Exception:
         print(f"Error: Failed to read {path.replace(temp_dir + os.path.sep, '')}")
         return
+
+    if log:
+        log_changes(path, text, "modify_log.txt")
 
     total_count = 0
     for regex, sub in filter.items():
@@ -61,6 +83,9 @@ def modify_file(path: str) -> None:
 
 def rename_file(path: str) -> None:
     new_name = current_name = os.path.basename(path)
+
+    if log:
+        log_changes(path, current_name, "rename_log.txt")
 
     for regex, sub in filter.items():
         new_name = re.sub(regex, sub, new_name, flags=re.IGNORECASE)
@@ -172,6 +197,12 @@ def get_args() -> argparse.Namespace:
         "-r", "--rename", action="store_true", help="Use filter to rename files"
     )
     optional.add_argument(
+        "-l",
+        "--log",
+        action="store_true",
+        help="Log files modifications to a text file",
+    )
+    optional.add_argument(
         "-h", "--help", action="help", help="Show this help message and exit"
     )
 
@@ -233,6 +264,9 @@ def main() -> None:
 
         global sevenzip
         sevenzip = get_sevenzip()
+
+        global log
+        log = args.log
 
         global temp_dir
         with tempfile.TemporaryDirectory() as temp_dir:
