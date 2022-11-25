@@ -200,7 +200,7 @@ def get_args() -> argparse.Namespace:
         "-l",
         "--log",
         action="store_true",
-        help="Log files modifications to a text file",
+        help="Log changes to a text file",
     )
     optional.add_argument(
         "-h", "--help", action="help", help="Show this help message and exit"
