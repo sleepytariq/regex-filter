@@ -49,7 +49,6 @@ def modify_file(path: str) -> None:
 
     total_count = 0
     for regex, sub in filter.items():
-
         if log:
             matches = []
             for match in re.finditer(regex, text, flags=re.IGNORECASE):
