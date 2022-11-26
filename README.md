@@ -6,7 +6,7 @@
 
 ## Usage
 ```console
-usage: regex_filter.py -i INPUT [INPUT ...] -f FILTER -o OUTPUT [-m] [-r] [-h]
+usage: regex_filter.py -i INPUT [INPUT ...] -f FILTER -o OUTPUT [-m] [-r] [-l] [-h]
 
 Replace matched strings in file content and file names with specified substitute using regular expressions
 
@@ -23,6 +23,7 @@ Modifiers:
   -r, --rename          Use filter to rename files
 
 Optional:
+  -l, --log             Log changes to a text file, NOTE: should only be used to debug the regex
   -h, --help            Show this help message and exit
 ```
 
