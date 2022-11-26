@@ -35,25 +35,6 @@ def get_random_string() -> str:
     return "".join([random.choice(chars) for _ in range(5)]) + "_"
 
 
-def log_changes(path: str, text: str, log_file: str) -> None:
-    modifications = {}
-
-    for regex in filter:
-        matches = []
-        for match in re.finditer(regex, text, flags=re.IGNORECASE):
-            match_string = match.group()
-            if match_string and match_string not in matches:
-                matches.append(match_string)
-
-        if matches:
-            modifications[regex] = matches
-
-    if modifications:
-        with open(os.path.join(temp_dir, log_file), "a") as file:
-            file.write(f"File: {path.replace(temp_dir + os.path.sep, '')}\n")
-            file.write(f"Modifications: \n{json.dumps(modifications, indent=4)}\n\n\n")
-
-
 def modify_file(path: str) -> None:
     try:
         encoding = charset_normalizer.from_path(path).best().encoding
@@ -64,10 +45,21 @@ def modify_file(path: str) -> None:
         return
 
     if log:
-        log_changes(path, text, "modify_log.txt")
+        modifications = {}
 
     total_count = 0
     for regex, sub in filter.items():
+
+        if log:
+            matches = []
+            for match in re.finditer(regex, text, flags=re.IGNORECASE):
+                match_string = match.group()
+                if match_string and match_string not in matches:
+                    matches.append(match_string)
+
+            if matches:
+                modifications[regex] = matches
+
         text, count = re.subn(regex, sub, text, flags=re.IGNORECASE)
         total_count += count
 
@@ -80,14 +72,30 @@ def modify_file(path: str) -> None:
 
     print(f"Modified ({total_count}): {path.replace(temp_dir + os.path.sep, '')}")
 
+    if log:
+        if modifications:
+            with open(os.path.join(temp_dir, "modify_log.txt"), "a") as file:
+                file.write(f"File: {path.replace(temp_dir + os.path.sep, '')}\n")
+                file.write(f"Changes: \n{json.dumps(modifications, indent=4)}\n\n\n")
+
 
 def rename_file(path: str) -> None:
     new_name = current_name = os.path.basename(path)
 
     if log:
-        log_changes(path, current_name, "rename_log.txt")
+        modifications = {}
 
     for regex, sub in filter.items():
+        if log:
+            matches = []
+            for match in re.finditer(regex, new_name, flags=re.IGNORECASE):
+                match_string = match.group()
+                if match_string and match_string not in matches:
+                    matches.append(match_string)
+
+            if matches:
+                modifications[regex] = matches
+
         new_name = re.sub(regex, sub, new_name, flags=re.IGNORECASE)
 
     if new_name == current_name:
@@ -103,6 +111,12 @@ def rename_file(path: str) -> None:
     os.rename(path, new_path)
 
     print(f"Renamed: {path.replace(temp_dir + os.path.sep, '')} -> {new_name}")
+
+    if log:
+        if modifications:
+            with open(os.path.join(temp_dir, "rename_logs.txt"), "a") as file:
+                file.write(f"File: {path.replace(temp_dir + os.path.sep, '')}\n")
+                file.write(f"Changes: \n{json.dumps(modifications, indent=4)}\n\n\n")
 
 
 def decompress(path: str) -> None:
@@ -200,7 +214,7 @@ def get_args() -> argparse.Namespace:
         "-l",
         "--log",
         action="store_true",
-        help="Log changes to a text file",
+        help="Log changes to a text file, NOTE: should only be used to debug the regex",
     )
     optional.add_argument(
         "-h", "--help", action="help", help="Show this help message and exit"
