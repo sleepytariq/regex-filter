@@ -19,8 +19,8 @@ def load_filter(path: str) -> dict[str, str]:
         with open(path, "r") as file:
             filter = json.load(file)
         return filter
-    except json.JSONDecodeError:
-        print("Error: Failed to parse filter")
+    except json.JSONDecodeError as error:
+        print(f"Error: Failed to parse filter <{error}>")
         sys.exit(1)
     except FileNotFoundError:
         print("Error: Filter does not exist")
@@ -264,6 +264,15 @@ def get_sevenzip() -> str:
     return sevenzip
 
 
+def validate_regex() -> None:
+    for regex in filter:
+        try:
+            re.compile(regex)
+        except re.error as error:
+            print(f"Error: Failed to compile {regex} <{error}>")
+            sys.exit(1)
+
+
 def main() -> None:
     try:
         args = get_args()
@@ -274,6 +283,8 @@ def main() -> None:
 
         global filter
         filter = load_filter(args.filter)
+
+        validate_regex()
 
         global sevenzip
         sevenzip = get_sevenzip()
