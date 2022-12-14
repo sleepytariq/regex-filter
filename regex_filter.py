@@ -273,6 +273,19 @@ def validate_regex() -> None:
             sys.exit(1)
 
 
+def validate_filter() -> None:
+    message = 'Error: Invalid filter format\nFormat must be:\n{\n\t"REGEX1" : "WORD1",\n\t"REGEX2" : "WORD2",\n\t"REGEX3" : "WORD3",\n\t.\n\t.\n\t.\n}'
+
+    if not isinstance(filter, dict):
+        print(message)
+        sys.exit(1)
+
+    for value in filter.values():
+        if not isinstance(value, str):
+            print(message)
+            sys.exit(1)
+
+
 def main() -> None:
     try:
         args = get_args()
@@ -283,6 +296,8 @@ def main() -> None:
 
         global filter
         filter = load_filter(args.filter)
+
+        validate_filter()
 
         validate_regex()
 
