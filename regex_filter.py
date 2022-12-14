@@ -118,10 +118,10 @@ def rename_file(path: str) -> None:
                 file.write(f"Changes: \n{json.dumps(modifications, indent=4)}\n\n\n")
 
 
-def decompress(path: str) -> None:
+def decompress(path: str, arctype: str) -> None:
     with tempfile.TemporaryDirectory() as td:
         subprocess.call(
-            f'{sevenzip} x -y "{path}" -o"{td}"',
+            f'{sevenzip} x -y "{path}" -t{arctype} -o"{td}"',
             shell=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -130,11 +130,11 @@ def decompress(path: str) -> None:
         shutil.copytree(td, path)
 
 
-def compress(path: str) -> None:
+def compress(path: str, arctype: str) -> None:
     temp = path + "_temp"
     os.rename(path, temp)
     subprocess.call(
-        f'{sevenzip} a -y "{path}" "{os.path.join(temp, "*")}"',
+        f'{sevenzip} a -y "{path}" -t{arctype} "{os.path.join(temp, "*")}"',
         shell=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -154,9 +154,10 @@ def clean_files(path: str, mode: str) -> None:
         if sevenzip:
             code, output = subprocess.getstatusoutput(f'{sevenzip} t -y -p0 "{file}"')
             if code == 0:
-                decompress(file)
+                arctype = re.search(r"(?<=\nType\s=\s)[^\n]+", output).group()
+                decompress(file, arctype)
                 clean_files(file, mode)
-                compress(file)
+                compress(file, arctype)
                 if mode == "rename":
                     rename_file(file)
                 continue
