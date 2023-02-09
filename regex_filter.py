@@ -73,7 +73,7 @@ def modify_file(path: str) -> None:
 
     if log:
         if modifications:
-            with open(os.path.join(temp_dir, "modify_log.txt"), "a") as file:
+            with open(os.path.join(temp_dir, "regex_filter_modify.log"), "a") as file:
                 file.write(f"File: {path.replace(temp_dir + os.path.sep, '')}\n")
                 file.write(f"Changes: \n{json.dumps(modifications, indent=4)}\n\n\n")
 
@@ -113,7 +113,7 @@ def rename_file(path: str) -> None:
 
     if log:
         if modifications:
-            with open(os.path.join(temp_dir, "rename_logs.txt"), "a") as file:
+            with open(os.path.join(temp_dir, "regex_filter_rename.log"), "a") as file:
                 file.write(f"File: {path.replace(temp_dir + os.path.sep, '')}\n")
                 file.write(f"Changes: \n{json.dumps(modifications, indent=4)}\n\n\n")
 
