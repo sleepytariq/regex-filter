@@ -81,6 +81,9 @@ def modify_file(path: str) -> None:
 def rename_file(path: str) -> None:
     new_name = current_name = os.path.basename(path)
 
+    if current_name == "regex_filter_modify.log" and os.path.dirname(path) == temp_dir:
+        return
+
     if log:
         modifications = {}
 
