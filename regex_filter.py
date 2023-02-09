@@ -166,9 +166,7 @@ def clean_files(path: str, mode: str) -> None:
                 continue
             else:
                 if "Type =" in output:
-                    print(
-                        f"Error: Failed to extract {file.replace(temp_dir + os.path.sep, '')}"
-                    )
+                    print(f"Error: Failed to extract {file.replace(temp_dir + os.path.sep, '')}")
                     continue
 
         if mode == "modify":
@@ -201,27 +199,21 @@ def get_args() -> argparse.Namespace:
         help="Path to a json file in REGEX:WORD format",
         required=True,
     )
-    required.add_argument(
-        "-o", "--output", type=str, help="Path to output directory", required=True
-    )
+    required.add_argument("-o", "--output", type=str, help="Path to output directory", required=True)
     modifiers.add_argument(
         "-m",
         "--modify",
         action="store_true",
         help="Use filter to modify content of files",
     )
-    modifiers.add_argument(
-        "-r", "--rename", action="store_true", help="Use filter to rename files"
-    )
+    modifiers.add_argument("-r", "--rename", action="store_true", help="Use filter to rename files")
     optional.add_argument(
         "-l",
         "--log",
         action="store_true",
         help="Log changes to a text file, NOTE: should only be used to debug the regex",
     )
-    optional.add_argument(
-        "-h", "--help", action="help", help="Show this help message and exit"
-    )
+    optional.add_argument("-h", "--help", action="help", help="Show this help message and exit")
 
     return parser.parse_args()
 
@@ -261,9 +253,7 @@ def get_sevenzip() -> str:
             break
 
     if not sevenzip:
-        print(
-            "Error: Unable to find 7zip in PATH, compressed files will not be cleaned"
-        )
+        print("Error: Unable to find 7zip in PATH, compressed files will not be cleaned")
 
     return sevenzip
 
